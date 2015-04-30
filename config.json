@@ -1,8 +1,0 @@
-{
-  "nick": "FakeToothless",
-  "user": "FakeToothless",
-  "port": 6667,
-  "host": "irc.editingarchive.com",
-  "channel": "#78492574",
-  "command_database": "irc_commands.db"
-}
