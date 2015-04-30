@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# A Classic Example of "Why does this work?!"
+# Since Imports are based on sys.path, we need to add the parent directory.
 import os
 import sys
 parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
@@ -10,8 +10,15 @@ import irc_helper
 import json
 
 
-needed = ("nick", "user", "channel", "port", "host")
 with open("config.json") as config_file:
     config = json.loads(config_file.read())
 
-irc_helper.IRCBot(**{x:y for x, y in config.items() if x in needed}).run()
+
+bot = irc_helper.IRCHelper(**config)
+
+try:
+    bot.run()
+except KeyboardInterrupt:
+    pass
+finally:
+    bot.quit()

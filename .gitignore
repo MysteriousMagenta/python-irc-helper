@@ -5,3 +5,6 @@ __pycache__/
 
 config.json
 
+irc_commands.db
+
+irc_commands.db-journal

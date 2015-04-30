@@ -49,22 +49,25 @@ class IRCBot(object):
             if self.channel is None:
                 raise IRCError("Tried calling send_message without being in a channel and with no recipient!")
             send_to = self.channel
+        self.log("[{} to {}] {}".format(self.nick, send_to, message))
         self.socket.send("PRIVMSG {} :{}\r\n".format(send_to, message).encode())
 
     def handle_block(self, block):
         message_parts = block.split(" ", 1)
         sender = message_parts[0][1:].split("!", 1)[0]
         command = message_parts[1].strip()
-        if self.handle_ping(block) or sender in (self.nick, self.user) or sender == self.connection_data[0]:
-            return
+        if self.handle_ping(block):
+            return {"command": "PING", "message": command[1:]}
+        if sender in (self.nick, self.user) or sender == self.connection_data[0]:
+            return {"sender": self.connection_data[0]}
         command, recipient, message = command.split(" ", 2)
         message = message[1:]
         # Are there any other commands I need to handle?
-        if command.upper() == "PRIVMSG":
+        if command.upper() in ("PRIVMSG", "ALERT"):
             self.log("[{} to {}] {}".format(sender, recipient, message))
         else:
             self.log("Unknown Command '{}'".format(command))
-
+        return {"command": command, "sender": sender, "recipient": recipient, "message": message}
 
     def handle_ping(self, message):
         is_ping = message.upper().startswith("PING")
@@ -76,9 +79,12 @@ class IRCBot(object):
 
 
     def run(self):
-        while True:
+        while self.started:
             if self.started and self.channel is None:
                 self.join_channel(self.base_channel)
             msg = self.get_block()
             for line in msg.splitlines():
                 self.handle_block(line)
+
+    def quit(self):
+        pass
