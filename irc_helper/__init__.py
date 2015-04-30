@@ -34,12 +34,9 @@ def apply_commands(bot):
             domain = domain.split(".")[1]
         req = _requests.get(message.strip(), headers={"User-Agent": "Py3 TitleFinder"})
         if req.ok:
-            if domain != "youtube":
-                soup = _soup(req.text)
-                bot_.send_message("{}: The URL title is \"{}\"".format(sender, soup.title.text))
-            else:
-                # To Implement.
-                pass
+            soup = _soup(req.text)
+            bot_.send_message("{}: The URL title is \"{}\"".format(sender, soup.title.text))
+            # TODO Implement proper Youtube API
         else:
             bot_.send_message("{}: Wasn't able to get URL info! [{}]".format(sender, req.status_code))
 
@@ -48,7 +45,7 @@ def apply_commands(bot):
         command = " ".join(message.split(" ")[:2]).lower()
         respond_to = (bot_.nick.lower() + "! learn").lower()
         if command == respond_to and len(message.split("->", 1)) >= 2:
-            bot_.message("Has learned {}!".format(message.lstrip("learn ")))
+            bot_.send_message("Has learned {}!".format(message.lstrip(command)))
             @bot.basic_command()
             def learn_comm():
                 return message.lstrip("learn ").split(" -> ", 1)
