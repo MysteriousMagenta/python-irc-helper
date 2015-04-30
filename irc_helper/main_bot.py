@@ -56,4 +56,6 @@ class IRCHelper(IRCBot):
                     break
 
     def quit(self):
+        self.leave_channel()
+        self.socket.close()
         self.database.close()
