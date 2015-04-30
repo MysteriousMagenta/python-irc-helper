@@ -52,6 +52,9 @@ class IRCBot(object):
         self.log("[{} to {}] {}".format(self.nick, send_to, message))
         self.socket.send("PRIVMSG {} :{}\r\n".format(send_to, message).encode())
 
+    def send_action(self, message, send_to=None):
+        self.send_message("\u0001ACTION {}\u0001".format(message), send_to)
+
     def handle_block(self, block):
         message_parts = block.split(" ", 1)
         sender = message_parts[0][1:].split("!", 1)[0]
@@ -86,6 +89,7 @@ class IRCBot(object):
                 self.join_channel(self.base_channel)
             msg = self.get_block()
             for line in msg.splitlines():
+                print(line)
                 self.handle_block(line)
 
     def quit(self):

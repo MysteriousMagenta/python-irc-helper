@@ -38,9 +38,17 @@ class IRCHelper(IRCBot):
             if self.command_cursor.fetchone() is None:
                 self.command_cursor.execute("INSERT INTO Commands VALUES (0,?,?)", (trigger, response))
             else:
-                self.command_cursor.execute("INSERT INTO Commands(trigger,response) VALUES (?,?)", (trigger, response))
+                self.command_cursor.execute("SELECT trigger FROM Commands WHERE trigger=? AND response=?",
+                                            (trigger, response))
+                if self.command_cursor.fetchone() is None:
+                    self.command_cursor.execute("INSERT INTO Commands(trigger,response) VALUES (?,?)",
+                                                (trigger, response))
             return command
         return basic_decorator
+
+    def forget_basic_command(self, trigger):
+        self.command_cursor.execute("DELETE FROM Commands WHERE trigger=?", (trigger,))
+
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
@@ -58,4 +66,5 @@ class IRCHelper(IRCBot):
     def quit(self):
         self.leave_channel()
         self.socket.close()
+        self.command_database.commit()
         self.command_database.close()
