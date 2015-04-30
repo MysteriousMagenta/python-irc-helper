@@ -89,7 +89,6 @@ class IRCBot(object):
                 self.join_channel(self.base_channel)
             msg = self.get_block()
             for line in msg.splitlines():
-                print(line)
                 self.handle_block(line)
 
     def quit(self):
