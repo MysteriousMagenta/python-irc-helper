@@ -51,7 +51,7 @@ class IRCBot(object):
             if self.channel is None:
                 raise IRCError("Tried calling send_message without being in a channel and with no recipient!")
             send_to = self.channel
-        self.log("[{} to {}] {}".format(self.nick, send_to, message))
+        self.log("[{} {} {}] {}".format(self.nick, "on" if send_to == self.channel else "to", send_to, message))
         self.socket.send("PRIVMSG {} :{}\r\n".format(send_to, message).encode())
 
     def send_action(self, message, send_to=None):

@@ -12,6 +12,7 @@ if parent_directory not in sys.path:
 
 from irc_helper import IRCBot
 
+group_finder = re.compile("\(\?P<(.*?)>")
 
 class IRCHelper(IRCBot):
     def __init__(self, database_name, *args, **kwargs):
@@ -65,12 +66,19 @@ class IRCHelper(IRCBot):
                 for func_command in command_list:
                     if func_command(self, block_data.get("message"), block_data.get("sender")) is not None:
                         break
-                self.irc_cursor.execute("SELECT trigger,response FROM Commands")
-                for trigger, response in self.irc_cursor.fetchall():
-                    matched = re.match(trigger, block_data.get("message", ""))
-                    if matched:
-                        self.send_message(response.replace("${nick}", block_data.get("sender")))
-                        break
+                if block_data.get("recipient") == self.channel:
+                    self.irc_cursor.execute("SELECT trigger,response FROM Commands")
+                    for trigger, response in self.irc_cursor.fetchall():
+                        matched = re.match(trigger, block_data.get("message", ""))
+                        if matched:
+                            named_groups = {"${nick}": block_data.get("sender")}
+                            new_response = response
+                            for group_name in group_finder.findall(trigger):
+                                named_groups["${" + group_name + "}"] = matched.group(group_name)
+                            for group, value in named_groups.items():
+                                new_response = new_response.replace(group, value)
+                            self.send_action(new_response)
+                            break
         return block_data  # Yes.
 
     def quit(self):

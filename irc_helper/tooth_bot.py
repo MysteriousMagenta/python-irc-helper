@@ -64,7 +64,6 @@ class Toothless(irc_helper.IRCHelper):
         self.stomach = set()
         self.apply_commands()
 
-
     def handle_block(self, block):
         block_data = super().handle_block(block)
         if block_data.get("command", "").upper() == "JOIN":
@@ -75,6 +74,17 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     greeting += block_data.get("sender", "")
                 self.send_action(greeting)
+        if block_data.get("sender") == "Toothless" and block_data.get("recipient") == self.nick:
+            try:
+                trigger, response = block_data.get("message", "").split(" -> ", 1)
+            except ValueError:
+                # Signifies that the message is not a command.
+                pass
+            else:
+                @self.basic_command()
+                def dummy():
+                    return trigger, response
+        return block_data
 
     def join_channel(self, channel):
         super().join_channel(channel)
@@ -153,7 +163,6 @@ class Toothless(irc_helper.IRCHelper):
                 trigger = message.split(" ", 2)[2]
                 bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
                 response = (bot.irc_cursor.fetchone() or [None])[0]
-                print(trigger, response)
                 if response is not None:
                     bot.send_action("forgot {} -> {}".format(trigger, response))
                     bot.forget_basic_command(trigger)
@@ -248,3 +257,11 @@ class Toothless(irc_helper.IRCHelper):
                 for trigger, response in bot.irc_cursor.fetchall():
                     bot.send_message("{} -> {}".format(trigger, response), sender)
                     time.sleep(.01)
+
+        @self.advanced_command(True)
+        def copy_original(bot, message, sender):
+            if message == "copy_original" and FLAGS["admin"] in self.get_flags(sender):
+                bot.copying = True
+                bot.send_action("will start copying the original.", sender)
+                bot.send_message("list_commands", "Toothless")
+                bot.irc_cursor.execute("SELECT * FROM Commands")
