@@ -2,6 +2,7 @@
 # Since Imports are based on sys.path, we need to add the parent directory.
 import os
 import sys
+
 parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
 if parent_directory not in sys.path:
     sys.path.insert(0, parent_directory)
@@ -13,9 +14,7 @@ import json
 with open("config.json") as config_file:
     config = json.loads(config_file.read())
 
-
-bot = irc_helper.IRCHelper(**config)
-bot.apply_commands()
+bot = irc_helper.Toothless(**config)
 
 try:
     bot.run()
