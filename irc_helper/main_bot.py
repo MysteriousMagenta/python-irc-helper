@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Since Imports are based on sys.path, we need to add the parent directory.
 import os
-import sys
-import sqlite3
+import random
 import re
 import requests
-
+import sqlite3
+import sys
 import time
 
 from bs4 import BeautifulSoup
@@ -29,6 +29,29 @@ FLAGS = {
     "whitelist": "w",
     "ignore": "i",
 }
+ATTACKS = [
+    "shoots a plasma bolt at",
+    "hurls a pebble at",
+    "tackles",
+    "tail-whips",
+    "charges",
+    "unsheathes his teeth and bites"
+]
+GREETS = [
+    "welcomingly nuzzles and licks",
+    "welcomingly nuzzles",
+    "welcomingly licks",
+    "welcomingly tail-slaps",
+    "playfully nuzzles and licks",
+    "playfully nuzzles",
+    "playfully licks",
+    "playfully tail-slaps",
+    "tosses a pebble at",
+    "joyfully waggles his tail at",
+    "cheerfully waggles his tail at",
+    "playfully waggles his tail at",
+    "welcomes"
+]
 
 
 class IRCHelper(IRCBot):
@@ -91,9 +114,8 @@ class IRCHelper(IRCBot):
                         self.send_message(response.replace("${nick}", block_data.get("sender")))
                         break
             elif block_data.get("command", "").upper() == "JOIN":
-                self.log("[{}] Joined!".format(block_data.get("sender")))
                 if FLAGS["ignore"] not in self.get_flags(block_data.get("sender", "")):
-                    self.send_action("welcomes {}".format(block_data.get("sender")))
+                    self.send_action("{} {}".format(random.choice(GREETS), block_data.get("sender")))
 
     def add_flag(self, username, flag):
         if flag in FLAGS:
@@ -119,10 +141,10 @@ class IRCHelper(IRCBot):
 
     def quit(self):
         self.started = False
-        self.leave_channel()
-        self.socket.close()
         self.command_database.commit()
         self.command_database.close()
+        self.leave_channel()
+        self.socket.close()
 
     def apply_commands(self):
         """
@@ -154,7 +176,7 @@ class IRCHelper(IRCBot):
             if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot.get_flags(sender):
                 bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?", message.split(" ", 2)[2].split(" -> ", 1))
                 if bot.irc_cursor.fetchone() is None:
-                    bot.send_action("Has learned {}!".format(message.split(" ", 2)[2]))
+                    bot.send_action("has been trained by {}!".format(sender))
 
                     @self.basic_command()
                     def learn_comm():
@@ -162,7 +184,7 @@ class IRCHelper(IRCBot):
                 else:
                     bot.send_action("already knows that!")
             elif FLAGS["whitelist"] not in bot.get_flags(sender):
-                bot.send_action("doesn't want to be trained by {}".format(sender))
+                bot.send_action("doesn't want to be trained by {}!".format(sender))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -186,7 +208,7 @@ class IRCHelper(IRCBot):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! attack").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
-                bot.send_action("pounces on {}!".format(message.split(" ")[1]))
+                bot.send_action("{} {}!".format(random.choice(ATTACKS), message.split(" ")[1]))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -217,6 +239,8 @@ class IRCHelper(IRCBot):
                     if victim_id != -1:
                         del bot.stomach[victim_id]
                         bot.send_action("spits out {}!".format(victim))
+                    else:
+                        bot.send_action("hasn't eaten {} yet!".format(victim))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -228,7 +252,9 @@ class IRCHelper(IRCBot):
             if command == respond_to:
                 stomachs = ", ".join(bot.stomach)
                 if stomachs:
-                    bot.send_action("has eaten {}".format(stomachs))
+                    bot.send_action("is digesting {}!".format(stomachs))
+                else:
+                    bot.send_action("hasn't eaten anything yet!")
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -239,10 +265,10 @@ class IRCHelper(IRCBot):
             respond_to = (bot.nick.lower() + "! vomit").lower()
             if command == respond_to:
                 if bot.stomach:
-                    bot.send_action("spits out everyone!")
+                    bot.send_action("empties his stomach!")
                     bot.stomach = []
                 else:
-                    bot.send_action("hasn't eaten anyone!")
+                    bot.send_action("hasn't eaten anything yet!")
             return command == respond_to or None
 
         @self.advanced_command(True)
