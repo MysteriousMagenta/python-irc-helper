@@ -160,7 +160,10 @@ class IRCHelper(IRCBot):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot_.nick.lower() + "! forget").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
-                bot_.forget_basic_command(message.split(" ", 2)[2])
+                trigger = message.split(" ", 2)[2]
+                bot_.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
+                bot_.forget_basic_command(trigger)
+                bot_.send_action("Forgot {} -> {}".format(trigger, bot_.irc_cursor.fetchone()[0]))
             return command == respond_to or None
 
         @bot.advanced_command(False)
