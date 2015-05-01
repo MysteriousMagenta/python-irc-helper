@@ -15,7 +15,7 @@ with open("config.json") as config_file:
 
 
 bot = irc_helper.IRCHelper(**config)
-irc_helper.IRCHelper.apply_commands(bot)
+bot.apply_commands()
 
 try:
     bot.run()

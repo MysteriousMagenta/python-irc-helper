@@ -63,13 +63,16 @@ class IRCBot(object):
             return {"command": "PING", "message": command[1:]}
         if sender in (self.nick, self.user) or sender == self.connection_data[0]:
             return {"sender": self.connection_data[0]}
-        command, recipient, message = command.split(" ", 2)
-        message = message[1:]
+        message_info = command.split(" ", 2)
+        command, recipient = message_info[:2]
+        if len(message_info) >= 3:
+            message = message_info[2][1:]
+        else:
+            message = ""
+
         # Are there any other commands I need to handle?
         if command.upper() in ("PRIVMSG", "ALERT"):
             self.log("[{} to {}] {}".format(sender, recipient, message))
-        else:
-            self.log("Unknown Command '{}'".format(command))
         return {"command": command, "sender": sender, "recipient": recipient, "message": message}
 
     def handle_ping(self, message):
@@ -82,7 +85,7 @@ class IRCBot(object):
 
     def leave_channel(self, message=None):
         quit_message = (" :" + message) if message is not None else None
-        self.socket.send("QUIT{}\r\n".format(quit_message or "").encode())
+        self.socket.send("PART {}{}\r\n".format(self.channel, quit_message or "").encode())
 
     def run(self):
         while self.started:

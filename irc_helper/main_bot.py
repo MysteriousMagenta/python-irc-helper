@@ -72,22 +72,28 @@ class IRCHelper(IRCBot):
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
-        if block_data.get("sender") != self.user and block_data.get("message"):
-            if block_data.get("recipient") == self.channel:
-                command_list = self.channel_commands
-            elif block_data.get("recipient") == self.nick:
-                command_list = self.private_commands
-            else:
-                command_list = []
-            for func_command in command_list:
-                if func_command(self, block_data.get("message"), block_data.get("sender")) is not None:
-                    break
-            self.irc_cursor.execute("SELECT trigger,response FROM Commands")
-            for trigger, response in self.irc_cursor.fetchall():
-                matched = re.match(trigger, block_data.get("message", ""))
-                if matched:
-                    self.send_message(response.replace("${nick}", block_data.get("sender")))
-                    break
+        print(block_data)
+        if block_data.get("sender") != self.nick:
+            if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message", ""):
+                if block_data.get("recipient") == self.channel:
+                    command_list = self.channel_commands
+                elif block_data.get("recipient") == self.nick:
+                    command_list = self.private_commands
+                else:
+                    command_list = []
+                for func_command in command_list:
+                    if func_command(self, block_data.get("message"), block_data.get("sender")) is not None:
+                        break
+                self.irc_cursor.execute("SELECT trigger,response FROM Commands")
+                for trigger, response in self.irc_cursor.fetchall():
+                    matched = re.match(trigger, block_data.get("message", ""))
+                    if matched:
+                        self.send_message(response.replace("${nick}", block_data.get("sender")))
+                        break
+            elif block_data.get("command", "").upper() == "JOIN":
+                self.log("[{}] Joined!".format(block_data.get("sender")))
+                if FLAGS["ignore"] not in self.get_flags(block_data.get("sender", "")):
+                    self.send_action("welcomes {}".format(block_data.get("sender")))
 
     def add_flag(self, username, flag):
         if flag in FLAGS:
