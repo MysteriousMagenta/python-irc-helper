@@ -239,7 +239,7 @@ class Toothless(irc_helper.IRCHelper):
         @self.advanced_command(True)
         def terminate(bot, message, sender):
             if message == "terminate" and FLAGS["admin"] in bot.get_flags(sender):
-                bot.quit()
+                raise KeyboardInterrupt
 
         @self.advanced_command(True)
         def list_commands(bot, message, sender):
