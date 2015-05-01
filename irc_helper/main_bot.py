@@ -146,13 +146,18 @@ class IRCHelper(IRCBot):
         def learn_trigger(bot_, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot_.nick.lower() + "! learn").lower()
-            if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot_.get_flags(
-                    sender):
-                bot_.send_message("Has learned {}!".format(message.split(" ", 2)[2]))
+            if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot_.get_flags(sender):
+                bot_.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?", message.split(" ", 2)[2].split(" -> ", 1))
+                if bot_.irc_cursor.fetchone() is None:
+                    bot_.send_action("Has learned {}!".format(message.split(" ", 2)[2]))
 
-                @bot.basic_command()
-                def learn_comm():
-                    return message.split(" ", 2)[2].split(" -> ", 1)
+                    @bot.basic_command()
+                    def learn_comm():
+                        return message.split(" ", 2)[2].split(" -> ", 1)
+                else:
+                    bot_.send_action("already knows that!")
+            elif FLAGS["whitelist"] not in bot_.get_flags(sender):
+                bot_.send_action("doesn't want to be trained by {}".format(sender))
             return command == respond_to or None
 
         @bot.advanced_command(False)
@@ -162,8 +167,13 @@ class IRCHelper(IRCBot):
             if command == respond_to and len(message.split(" ")) >= 3:
                 trigger = message.split(" ", 2)[2]
                 bot_.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
-                bot_.forget_basic_command(trigger)
-                bot_.send_action("Forgot {} -> {}".format(trigger, bot_.irc_cursor.fetchone()[0]))
+                response = (bot_.irc_cursor.fetchone() or [None])[0]
+                print(trigger, response)
+                if response is not None:
+                    bot_.send_action("forgot {} -> {}".format(trigger, response))
+                    bot_.forget_basic_command(trigger)
+                else:
+                    bot_.send_action("doesn't know that!")
             return command == respond_to or None
 
         @bot.advanced_command(False)

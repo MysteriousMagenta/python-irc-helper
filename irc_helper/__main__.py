@@ -19,7 +19,9 @@ irc_helper.IRCHelper.apply_commands(bot)
 
 try:
     bot.run()
-except KeyboardInterrupt:
-    pass
-finally:
+except (Exception, KeyboardInterrupt) as e:
+    bot.quit()
+    if not isinstance(e, KeyboardInterrupt):
+        raise
+else:
     bot.quit()

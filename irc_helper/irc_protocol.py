@@ -80,8 +80,9 @@ class IRCBot(object):
             self.socket.send("PONG :{}\r\n".format(data).encode())
         return is_ping
 
-    def leave_channel(self, message=""):
-        self.socket.send("QUIT{}".format((" :" + message) if message else "").encode())
+    def leave_channel(self, message=None):
+        quit_message = (" :" + message) if message is not None else None
+        self.socket.send("QUIT{}\r\n".format(quit_message or "").encode())
 
     def run(self):
         while self.started:
