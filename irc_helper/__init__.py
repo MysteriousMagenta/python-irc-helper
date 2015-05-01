@@ -127,7 +127,7 @@ def apply_commands(bot):
                 
     @bot.advanced_command(True)
     def clear_commands(bot_, message, sender):
-        if message.lower().strip() == "purge_commands" and bot_.get_flags(sender) in (FLAGS["admin"],):
+        if message.lower().strip() == "purge_commands" and FLAGS["admin"] in bot_.get_flags(sender):
             bot_.cursor.execute("DELETE FROM Commands")
 
     @bot.advanced_command(True)
@@ -139,7 +139,7 @@ def apply_commands(bot):
 
     @bot.advanced_command(True)
     def terminate(bot_, message, sender):
-        if message == "terminate" and bot_.get_flags(sender) in (FLAGS["admin"]):
+        if message == "terminate" and FLAGS["admin"] in bot_.get_flags(sender):
             bot_.quit()
 
     @bot.advanced_command(True)
