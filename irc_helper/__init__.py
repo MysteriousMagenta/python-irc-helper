@@ -44,13 +44,13 @@ def apply_commands(bot):
 
     @bot.advanced_command(False)
     def learn_trigger(bot_, message, sender):
-        command = " ".join(message.split(" ")[:2]).lower()
+        command = " ".join(message.split(" ")[:2])
         respond_to = (bot_.nick.lower() + "! learn").lower()
-        if command == respond_to and len(message.split("->", 1)) >= 2:
-            bot_.send_message("Has learned {}!".format(message.lstrip(command)))
+        if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot_.get_flags(sender):
+            bot_.send_message("Has learned {}!".format(message.split(" ", 2)[2]))
             @bot.basic_command()
             def learn_comm():
-                return message.lstrip(command).split(" -> ", 1)
+                return message.split(" ", 2)[2].split(" -> ", 1)
         return command == respond_to or None
 
     @bot.advanced_command(False)
