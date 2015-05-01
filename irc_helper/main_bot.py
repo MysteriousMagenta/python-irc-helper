@@ -118,8 +118,7 @@ class IRCHelper(IRCBot):
         self.command_database.commit()
         self.command_database.close()
 
-    @staticmethod
-    def apply_commands(bot):
+    def apply_commands(self):
         """
         A base set of commands.
         Arguments:
@@ -128,139 +127,139 @@ class IRCHelper(IRCBot):
             Adds a bunch of sample commands to bot.
         """
 
-        @bot.advanced_command(False)
-        def url_title(bot_, message, sender):
+        @self.advanced_command(False)
+        def url_title(bot, message, sender):
             url_match = url_validator.search(message.strip())
             if not url_match:
                 return
             req = requests.get(message.strip(), headers={"User-Agent": "Py3 TitleFinder"})
             if req.ok:
                 soup = BeautifulSoup(req.text)
-                bot_.send_message("{}: The URL title is \"{}\"".format(sender, soup.title.text))
+                bot.send_message("{}: The URL title is \"{}\"".format(sender, soup.title.text))
                 # TODO Implement proper Youtube API
             else:
-                bot_.send_message("{}: Wasn't able to get URL info! [{}]".format(sender, req.status_code))
+                bot.send_message("{}: Wasn't able to get URL info! [{}]".format(sender, req.status_code))
             return True
 
-        @bot.advanced_command(False)
-        def learn_trigger(bot_, message, sender):
+        @self.advanced_command(False)
+        def learn_trigger(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! learn").lower()
-            if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot_.get_flags(sender):
-                bot_.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?", message.split(" ", 2)[2].split(" -> ", 1))
-                if bot_.irc_cursor.fetchone() is None:
-                    bot_.send_action("Has learned {}!".format(message.split(" ", 2)[2]))
+            respond_to = (bot.nick.lower() + "! learn").lower()
+            if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot.get_flags(sender):
+                bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?", message.split(" ", 2)[2].split(" -> ", 1))
+                if bot.irc_cursor.fetchone() is None:
+                    bot.send_action("Has learned {}!".format(message.split(" ", 2)[2]))
 
-                    @bot.basic_command()
+                    @self.basic_command()
                     def learn_comm():
                         return message.split(" ", 2)[2].split(" -> ", 1)
                 else:
-                    bot_.send_action("already knows that!")
-            elif FLAGS["whitelist"] not in bot_.get_flags(sender):
-                bot_.send_action("doesn't want to be trained by {}".format(sender))
+                    bot.send_action("already knows that!")
+            elif FLAGS["whitelist"] not in bot.get_flags(sender):
+                bot.send_action("doesn't want to be trained by {}".format(sender))
             return command == respond_to or None
 
-        @bot.advanced_command(False)
-        def forget_trigger(bot_, message, sender):
+        @self.advanced_command(False)
+        def forget_trigger(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! forget").lower()
+            respond_to = (bot.nick.lower() + "! forget").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
                 trigger = message.split(" ", 2)[2]
-                bot_.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
-                response = (bot_.irc_cursor.fetchone() or [None])[0]
+                bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
+                response = (bot.irc_cursor.fetchone() or [None])[0]
                 print(trigger, response)
                 if response is not None:
-                    bot_.send_action("forgot {} -> {}".format(trigger, response))
-                    bot_.forget_basic_command(trigger)
+                    bot.send_action("forgot {} -> {}".format(trigger, response))
+                    bot.forget_basic_command(trigger)
                 else:
-                    bot_.send_action("doesn't know that!")
+                    bot.send_action("doesn't know that!")
             return command == respond_to or None
 
-        @bot.advanced_command(False)
-        def attack(bot_, message, sender):
+        @self.advanced_command(False)
+        def attack(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! attack").lower()
+            respond_to = (bot.nick.lower() + "! attack").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
-                bot_.send_action("pounces on {}!".format(message.split(" ")[1]))
+                bot.send_action("pounces on {}!".format(message.split(" ")[1]))
             return command == respond_to or None
 
-        @bot.advanced_command(False)
-        def eat(bot_, message, sender):
+        @self.advanced_command(False)
+        def eat(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! eat").lower()
-            if command == respond_to and len(message.split(" ")) >= 3:
-                victim = message.split(" ", 2)[2]
-                bot_.send_action("eats {}!".format(victim))
-                if "stomach" not in bot_.__dict__:
-                    bot_.stomach = []
-                bot_.stomach.append(victim)
-            return command == respond_to or None
-
-        @bot.advanced_command(False)
-        def spit(bot_, message, sender):
-            command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! spit").lower()
+            respond_to = (bot.nick.lower() + "! eat").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
                 victim = message.split(" ", 2)[2]
-                if "stomach" not in bot_.__dict__:
-                    bot_.stomach = []
+                bot.send_action("eats {}!".format(victim))
+                if "stomach" not in bot.__dict__:
+                    bot.stomach = []
+                bot.stomach.append(victim)
+            return command == respond_to or None
+
+        @self.advanced_command(False)
+        def spit(bot, message, sender):
+            command = " ".join(message.split(" ")[:2]).lower()
+            respond_to = (bot.nick.lower() + "! spit").lower()
+            if command == respond_to and len(message.split(" ")) >= 3:
+                victim = message.split(" ", 2)[2]
+                if "stomach" not in bot.__dict__:
+                    bot.stomach = []
                 try:
-                    victim_id = bot_.stomach.index(victim)
+                    victim_id = bot.stomach.index(victim)
                 except ValueError:
                     return
                 else:
                     if victim_id != -1:
-                        del bot_.stomach[victim_id]
-                        bot_.send_action("spits out {}!".format(victim))
+                        del bot.stomach[victim_id]
+                        bot.send_action("spits out {}!".format(victim))
             return command == respond_to or None
 
-        @bot.advanced_command(False)
-        def show_stomach(bot_, message, sender):
+        @self.advanced_command(False)
+        def show_stomach(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! stomach").lower()
-            if "stomach" not in bot_.__dict__:
-                bot_.stomach = []
+            respond_to = (bot.nick.lower() + "! stomach").lower()
+            if "stomach" not in bot.__dict__:
+                bot.stomach = []
             if command == respond_to:
-                stomachs = ", ".join(bot_.stomach)
+                stomachs = ", ".join(bot.stomach)
                 if stomachs:
-                    bot_.send_action("has eaten {}".format(stomachs))
+                    bot.send_action("has eaten {}".format(stomachs))
             return command == respond_to or None
 
-        @bot.advanced_command(False)
-        def vomit(bot_, message, sender):
-            if "stomach" not in bot_.__dict__:
-                bot_.stomach = []
+        @self.advanced_command(False)
+        def vomit(bot, message, sender):
+            if "stomach" not in bot.__dict__:
+                bot.stomach = []
             command = " ".join(message.split(" ")[:2]).lower()
-            respond_to = (bot_.nick.lower() + "! vomit").lower()
+            respond_to = (bot.nick.lower() + "! vomit").lower()
             if command == respond_to:
-                if bot_.stomach:
-                    bot_.send_action("spits out everyone!")
-                    bot_.stomach = []
+                if bot.stomach:
+                    bot.send_action("spits out everyone!")
+                    bot.stomach = []
                 else:
-                    bot_.send_action("hasn't eaten anyone!")
+                    bot.send_action("hasn't eaten anyone!")
             return command == respond_to or None
 
-        @bot.advanced_command(True)
-        def clear_commands(bot_, message, sender):
-            if message.lower().strip() == "purge_commands" and FLAGS["admin"] in bot_.get_flags(sender):
-                bot_.cursor.execute("DELETE FROM Commands")
+        @self.advanced_command(True)
+        def clear_commands(bot, message, sender):
+            if message.lower().strip() == "purge_commands" and FLAGS["admin"] in bot.get_flags(sender):
+                bot.cursor.execute("DELETE FROM Commands")
 
-        @bot.advanced_command(True)
-        def whitelist(bot_, message, sender):
+        @self.advanced_command(True)
+        def whitelist(bot, message, sender):
             nicknames = message.lower().strip().split(" ")
             if nicknames[0] == "append_whitelist":
                 for i in nicknames[1:]:
-                    bot_.add_flag(i, FLAGS["whitelist"])
+                    bot.add_flag(i, FLAGS["whitelist"])
 
-        @bot.advanced_command(True)
-        def terminate(bot_, message, sender):
-            if message == "terminate" and FLAGS["admin"] in bot_.get_flags(sender):
-                bot_.quit()
+        @self.advanced_command(True)
+        def terminate(bot, message, sender):
+            if message == "terminate" and FLAGS["admin"] in bot.get_flags(sender):
+                bot.quit()
 
-        @bot.advanced_command(True)
-        def list_commands(bot_, message, sender):
+        @self.advanced_command(True)
+        def list_commands(bot, message, sender):
             if message == "list_commands":
-                bot_.irc_cursor.execute("SELECT trigger,response FROM Commands")
-                for trigger, response in bot_.irc_cursor.fetchall():
-                    bot_.send_message("{} -> {}".format(trigger, response), sender)
+                bot.irc_cursor.execute("SELECT trigger,response FROM Commands")
+                for trigger, response in bot.irc_cursor.fetchall():
+                    bot.send_message("{} -> {}".format(trigger, response), sender)
                     time.sleep(.01)
