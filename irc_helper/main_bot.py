@@ -11,12 +11,12 @@ parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
 if parent_directory not in sys.path:
     sys.path.insert(0, parent_directory)
 
-from irc_helper import IRCBot
+from irc_helper import IRCBot, IRCError
 
 FLAGS = {
     "admin": "a",
-    "whitelisted": "w",
-    "ignored": "i",
+    "whitelist": "w",
+    "ignore": "i",
 }
 
 class IRCHelper(IRCBot):
@@ -76,6 +76,28 @@ class IRCHelper(IRCBot):
                 if matched:
                     self.send_message(response.replace("${nick}", block_data.get("sender")))
                     break
+
+    def add_flag(self, username, flag):
+        if flag in FLAGS:
+            flag = FLAGS.get(flag)
+        elif flag not in FLAGS.values():
+            raise IRCError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
+        self.irc_cursor.execute("SELECT * FROM Flags WHERE username=?", (username,))
+        if self.irc_cursor.fetchone() is None:
+            self.irc_cursor.execute("INSERT INTO Flags VALUES (0,?,?)", (username, flag))
+        else:
+            old_flags = self.get_flags(username)
+            new_flags = "".join(sorted(old_flags + flag))
+            self.irc_cursor.execute("UPDATE Flags WHERE username=? SET flags=?", (username, new_flags))
+
+    def get_flags(self, username):
+        self.irc_cursor.execute("SELECT flags FROM Flags WHERE username=?", (username,))
+        raw_flags = self.irc_cursor.fetchone()
+        if raw_flags:
+            raw_flags = raw_flags[0]
+        else:
+            raw_flags = ""
+        return tuple(raw_flags)
 
     def quit(self):
         self.leave_channel()
