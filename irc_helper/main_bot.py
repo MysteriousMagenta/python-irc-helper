@@ -95,7 +95,6 @@ class IRCHelper(IRCBot):
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
-        print(block_data)
         if block_data.get("sender") != self.nick:
             if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message", ""):
                 if block_data.get("recipient") == self.channel:
@@ -115,7 +114,12 @@ class IRCHelper(IRCBot):
                         break
             elif block_data.get("command", "").upper() == "JOIN":
                 if FLAGS["ignore"] not in self.get_flags(block_data.get("sender", "")):
-                    self.send_action("{} {}".format(random.choice(GREETS), block_data.get("sender")))
+                    greet = random.choice(GREETS)
+                    if "{nick}" in greet:
+                        greet = greet.format(nick=block_data.get("sender"))
+                    else:
+                        greet += block_data.get("sender", "")
+                    self.send_action(greet)
 
     def add_flag(self, username, flag):
         if flag in FLAGS:
@@ -145,6 +149,10 @@ class IRCHelper(IRCBot):
         self.command_database.close()
         self.leave_channel()
         self.socket.close()
+
+    def start_up(self):
+        super().start_up()
+        self.send_action("enters the arena!")
 
     def apply_commands(self):
         """
@@ -177,7 +185,6 @@ class IRCHelper(IRCBot):
                 bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?", message.split(" ", 2)[2].split(" -> ", 1))
                 if bot.irc_cursor.fetchone() is None:
                     bot.send_action("has been trained by {}!".format(sender))
-
                     @self.basic_command()
                     def learn_comm():
                         return message.split(" ", 2)[2].split(" -> ", 1)
