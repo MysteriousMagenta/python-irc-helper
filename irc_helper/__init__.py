@@ -44,7 +44,7 @@ def apply_commands(bot):
 
     @bot.advanced_command(False)
     def learn_trigger(bot_, message, sender):
-        command = " ".join(message.split(" ")[:2])
+        command = " ".join(message.split(" ")[:2]).lower()
         respond_to = (bot_.nick.lower() + "! learn").lower()
         if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot_.get_flags(sender):
             bot_.send_message("Has learned {}!".format(message.split(" ", 2)[2]))

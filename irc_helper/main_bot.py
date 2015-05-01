@@ -60,7 +60,7 @@ class IRCHelper(IRCBot):
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
-        if block_data.get("message"):
+        if block_data.get("sender") != self.user and block_data.get("message"):
             if block_data.get("recipient") == self.channel:
                 command_list = self.channel_commands
             elif block_data.get("recipient") == self.nick:
