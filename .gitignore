@@ -8,3 +8,7 @@ __pycache__/
 *.db
 
 *.db-journal
+
+# A side thing, don't worry about it.
+
+tooth_bot.py
