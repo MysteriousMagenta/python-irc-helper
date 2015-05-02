@@ -134,7 +134,7 @@ class Toothless(irc_helper.IRCHelper):
             req = requests.get(message.strip(), headers={"User-Agent": "Py3 TitleFinder"})
             if req.ok:
                 soup = BeautifulSoup(req.text)
-                bot.send_action(self.messages.get("urltitle", "finds the URL title to be: {title}").format(title=soup.title.text))
+                bot.send_action(self.messages.get("urltitle", "finds the URL title to be: \"{title}\"").format(title=soup.title.text))
                 # TODO Implement proper Youtube API
             else:
                 bot.send_action("wasn't able to get URL info! [{}]".format(sender, req.status_code))
