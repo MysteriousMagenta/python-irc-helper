@@ -284,7 +284,9 @@ class Toothless(irc_helper.IRCHelper):
 
         @self.advanced_command(True)
         def add_flag_pm(bot, message, sender):
-            if FLAGS["admin"] in sender and message.split(" ")[0] == "add_flag":
+            if FLAGS["admin"] in bot.get_flags(sender) and message.split(" ")[0] == "add_flag":
                 user, flag = message.split(" ")[1:3]
                 bot.add_flags(user, flag)
-                bot.send_action(self.messages.get("flag_added", "succesfully added {flag} to {user}, new flags: {flags}.").format(user=user, flag=flag, flags="".join(bot.get_flags(user.lower()))), sender)
+                flags = "".join(bot.get_flags(user.lower()))
+                bot.send_action(self.messages.get("flag_added", "succesfully added {flag} to {user}, new flags: {flags}.").format(user=user, flag=flag, flags=flags), sender)
+                return True
