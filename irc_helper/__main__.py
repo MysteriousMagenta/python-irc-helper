@@ -8,19 +8,13 @@ if parent_directory not in sys.path:
     sys.path.insert(0, parent_directory)
 
 import irc_helper
-import json
 
 
-with open("config.json") as config_file:
-    config = json.loads(config_file.read())
-
-bot = irc_helper.Toothless(**config)
+bot = irc_helper.Toothless(open("config.json"))
 
 try:
     bot.run()
-except (Exception, KeyboardInterrupt) as e:
-    bot.quit()
-    if not isinstance(e, KeyboardInterrupt):
-        raise
-else:
-    bot.quit()
+except KeyboardInterrupt:
+    pass
+finally:
+    bot.quit(bot.messages.get("disconnect", "Gotta go save Hiccup from yet another gliding accident..."))

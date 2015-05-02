@@ -1,0 +1,67 @@
+{
+    "connection": {
+        "channel": "#cloudjumpertestingchannel",
+        "user_name": "CloudJumper",
+        "nick": "CloudJumper",
+        "password": "",
+        "real_name": "github.com/Tmplt/Toothless",
+        "server": {
+            "address": "irc.editingarchive.com",
+            "port": 6667
+        }
+    },
+    "inedible_victims": ["CloudJumper"],
+    "database_name": "irc_database.db",
+    "messages": {
+        "announce_arrival": "enters the arena!",
+        "append_whitelist_existing": "The rest were already on the whitelist.",
+        "append_whitelist_new": "has added {nicks} to the whitelist.",
+        "attacks": [
+            "shoots a plasma bolt at {target}!",
+            "hurls a pebble at {target}!",
+            "tackles {target}!",
+            "tail-whips {target}!",
+            "charges {target}!",
+            "unsheathes his teeth and bites {target}!"
+        ],
+        "deny": "won't follow {nick}'s instructions!",
+        "disconnect": "Gotta go save Hiccup from yet another gliding accident...",
+        "eat": "gulps down {victim}!",
+        "eat_inedible": "doesn't feel like eating {victim}!",
+        "forget": "forgot one of his tricks!",
+        "forget_superfluous": "doesn't know that trick!",
+        "greetings": [
+            "welcomingly nuzzles and licks {nick}",
+            "welcomingly nuzzles {nick}",
+            "welcomingly licks {nick}",
+            "welcomingly tail-slaps {nick}",
+            "playfully nuzzles and licks {nick}",
+            "playfully nuzzles {nick}",
+            "playfully licks {nick}",
+            "playfully tail-slaps {nick}",
+            "tosses a pebble at {nick}",
+            "joyfully waggles his tail at {nick}'s arrival",
+            "cheerfully waggles his tail at {nick}'s arrival",
+            "playfully waggles his tail at {nick}'s arrival",
+            "welcomes {nick} with a cheerful warble"
+        ],
+        "ignore_me": "will no longer acknowledge your entrances.",
+        "ignore_me_superfluous": "is already ignoring you.",
+        "learn": "has been trained by {nick}!",
+        "learn_superfluous": "already knows that trick!",
+        "learn_deny": "doesn't want to be trained by {nick}!",
+        "learn_error": "tilts his head in confusion towards {nick}...",
+        "print_command": "{trigger} -> {response}",
+        "purge_commands": "forgot all of his tricks!",
+        "purge_commands_superfluous": "hasn't learned any tricks to forget!",
+        "roll": "rolls a {result} for {nick}!",
+        "nodice": "can't find a dice big enough for {nick}...",
+        "diceerr": "can't find such a dice for {nick}...",
+        "spit": "spits out {victim}!",
+        "spit_superfluous": "hasn't eaten {victim} yet!",
+        "stomach": "is digesting {victims}...",
+        "urltitle": "finds the URL title to be: {title}",
+        "vomit": "empties his stomach!",
+        "vomit_superfluous": "hasn't eaten anything yet!"
+    }
+}

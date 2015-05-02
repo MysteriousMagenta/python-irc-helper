@@ -9,6 +9,7 @@ import sys
 import re
 import requests
 import time
+import json
 from bs4 import BeautifulSoup
 
 parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
@@ -31,44 +32,44 @@ FLAGS = {
     "whitelist": "w",
     "ignore": "i",
 }
-ATTACKS = [
-    "shoots a plasma bolt at {target}!",
-    "hurls a pebble at {target}!",
-    "tackles {target}!",
-    "tail-whips {target}!",
-    "charges {target}!",
-    "unsheathes his teeth and bites {target}!"
-]
 
-GREETS = [
-    "welcomingly nuzzles and licks {nick}",
-    "welcomingly nuzzles {nick}",
-    "welcomingly licks {nick}",
-    "welcomingly tail-slaps {nick}",
-    "playfully nuzzles and licks {nick}",
-    "playfully nuzzles {nick}",
-    "playfully licks {nick}",
-    "playfully tail-slaps {nick}",
-    "tosses a pebble at {nick}",
-    "joyfully waggles his tail at {nick}'s arrival",
-    "cheerfully waggles his tail at {nick}'s arrival",
-    "playfully waggles his tail at {nick}'s arrival",
-    "welcomes {nick} with a cheerful warble"
-]
+
+class ToothlessError(irc_helper.IRCError):
+    pass
 
 
 # noinspection PyUnusedLocal
 class Toothless(irc_helper.IRCHelper):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config_file, close_afterwards=True):
+
+        needed = ("user", "nick", "channel", "host", "port", "database_name")
         self.stomach = set()
+        self.config = json.loads(config_file.read())
+        self.messages = self.config.get("messages", {})
+        self.connection = self.config.get("connection", {})
+        if "user" not in self.connection and "user_name" in self.connection:
+            self.connection["user"] = self.connection["user_name"]
+            del self.connection["user_name"]
+        if "password" in self.connection:
+            # To Implement.
+            pass
+        if "server" in self.connection:
+            self.connection["host"] = self.connection["server"].get("host") or self.connection["server"].get("address")
+            self.connection["port"] = self.connection.get("port", 6667)
+            del self.connection["server"]
+        self.connection["database_name"] = self.config.get("database_name")
+
+        super().__init__(**{k:v for k, v in self.connection.items() if k in needed})
+
         self.apply_commands()
+        if close_afterwards:
+            config_file.close()
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
         if block_data.get("command", "").upper() == "JOIN":
             if FLAGS["ignore"] not in self.get_flags(block_data.get("sender", "")):
-                greeting = random.choice(GREETS)
+                greeting = random.choice(self.messages.get("greetings", ["doesn't know how to greet {nick}!"]))
                 if "{nick}" in greeting:
                     greeting = greeting.format(nick=block_data.get("sender"))
                 else:
@@ -88,13 +89,13 @@ class Toothless(irc_helper.IRCHelper):
 
     def join_channel(self, channel):
         super().join_channel(channel)
-        self.send_action("enters the arena!")
+        self.send_action(self.messages.get("announce_arrival", "enters the arena!"))
 
     def add_flag(self, username, flag):
         if flag in FLAGS:
             flag = FLAGS.get(flag)
         elif flag not in FLAGS.values():
-            raise irc_helper.IRCError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
+            raise ToothlessError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
         self.irc_cursor.execute("SELECT * FROM Flags WHERE username=?", (username,))
         if self.irc_cursor.fetchone() is None:
             self.irc_cursor.execute("INSERT INTO Flags VALUES (0,?,?)", (username, flag))
@@ -129,7 +130,7 @@ class Toothless(irc_helper.IRCHelper):
             req = requests.get(message.strip(), headers={"User-Agent": "Py3 TitleFinder"})
             if req.ok:
                 soup = BeautifulSoup(req.text)
-                bot.send_action("thinks the URL title is \"{}\"".format(sender, soup.title.text))
+                bot.send_action(self.messages.get("urltitle", "finds the URL title to be: {title}").format(title=soup.title.text))
                 # TODO Implement proper Youtube API
             else:
                 bot.send_action("wasn't able to get URL info! [{}]".format(sender, req.status_code))
@@ -144,15 +145,17 @@ class Toothless(irc_helper.IRCHelper):
                 bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?",
                                        message.split(" ", 2)[2].split(" -> ", 1))
                 if bot.irc_cursor.fetchone() is None:
-                    bot.send_action("has been trained by {}!".format(sender))
+                    bot.send_action(self.messages.get("learn", "has been trained by {nick}!").format(nick=sender))
 
                     @self.basic_command()
                     def learn_comm():
                         return message.split(" ", 2)[2].split(" -> ", 1)
                 else:
-                    bot.send_action("already knows that!")
+                    bot.send_action(self.messages.get("learn_superfluous", "already knows that trick!"))
             elif FLAGS["whitelist"] not in bot.get_flags(sender):
-                bot.send_action("doesn't want to be trained by {}!".format(sender))
+                bot.send_action(self.messages.get("learn_deny", "doesn't want to be trained by {nick}!").format(nick=sender))
+            elif "->" in message:
+                bot.send_action(self.messages.get("learn_error", "tilts his head in confusion towards {nick}...").format(nick=sender))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -164,10 +167,10 @@ class Toothless(irc_helper.IRCHelper):
                 bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
                 response = (bot.irc_cursor.fetchone() or [None])[0]
                 if response is not None:
-                    bot.send_action("forgot {} -> {}".format(trigger, response))
+                    bot.send_action(self.messages.get("forget", "forgot one of his tricks!").format(nick=sender))
                     bot.forget_basic_command(trigger)
                 else:
-                    bot.send_action("doesn't know that!")
+                    bot.send_action(self.messages.get("forget_superfluous", "doesn't know that trick!").format(nick=sender))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -175,13 +178,14 @@ class Toothless(irc_helper.IRCHelper):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! attack").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
-                attack = random.choice(ATTACKS)
+                chosen_attack = random.choice(
+                    self.messages.get("attacks", ["doesn't have a valid attack for {target}!"]))
                 victim = message.split(" ")[1]
-                if "{target}" in attack:
-                    attack = attack.format(target=victim)
+                if "{target}" in chosen_attack:
+                    chosen_attack = chosen_attack.format(target=victim)
                 else:
-                    attack += victim
-                bot.send_action(attack)
+                    chosen_attack += victim
+                bot.send_action(chosen_attack)
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -190,8 +194,11 @@ class Toothless(irc_helper.IRCHelper):
             respond_to = (bot.nick.lower() + "! eat").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
                 victim = message.split(" ", 2)[2]
-                bot.send_action("eats {}!".format(victim))
-                bot.stomach.add(victim)
+                if victim not in self.config.get("inedible_victims"):
+                    bot.send_action(self.messages.get("eat", "gulps down {victim}!").format(victim=victim))
+                    bot.stomach.add(victim)
+                else:
+                    bot.send_action(self.messages.get("eat_inedible", "doesn't feel like eating {victim}!").format(victim=victim))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -207,7 +214,7 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     bot.send_action("hasn't eaten {} yet!".format(victim))
             bot.stomach = set(bot.stomach)
-            return command == respond_to or None
+            return (command == respond_to and len(message.split(" ")) >= 3) or None
 
         @self.advanced_command(False)
         def show_stomach(bot, message, sender):
@@ -227,16 +234,21 @@ class Toothless(irc_helper.IRCHelper):
             respond_to = (bot.nick.lower() + "! vomit").lower()
             if command == respond_to:
                 if bot.stomach:
-                    bot.send_action("empties his stomach!")
+                    bot.send_action(self.messages.get("vomit", "empties his stomach!"))
                     bot.stomach = set()
                 else:
-                    bot.send_action("hasn't eaten anything yet!")
+                    bot.send_action(self.messages.get("vomit_superfluous", "hasn't eaten anything yet!"))
             return command == respond_to or None
 
         @self.advanced_command(True)
         def clear_commands(bot, message, sender):
             if message.lower().strip() == "purge_commands" and FLAGS["admin"] in bot.get_flags(sender):
-                bot.cursor.execute("DELETE FROM Commands")
+                bot.irc_cursor.execute()
+                if not bot.irc_cursor.fetchall():
+                    bot.send_action(self.messages.get("purge_commands_superfluous", "hasn't learned any tricks to forget!"), sender)
+                else:
+                    bot.irc_cursor.execute("DELETE FROM Commands")
+                    bot.send_action(self.messages.get("purge_commands", "forgot all of his tricks!"), sender)
 
         @self.advanced_command(True)
         def whitelist(bot, message, sender):
@@ -255,13 +267,13 @@ class Toothless(irc_helper.IRCHelper):
             if message == "list_commands":
                 bot.irc_cursor.execute("SELECT trigger,response FROM Commands")
                 for trigger, response in bot.irc_cursor.fetchall():
-                    bot.send_message("{} -> {}".format(trigger, response), sender)
+                    bot.send_message(self.messages.get("print_command", "{trigger} -> {response}").format(trigger=trigger, response=response), sender)
                     time.sleep(.01)
 
         @self.advanced_command(True)
         def copy_original(bot, message, sender):
             if message == "copy_original" and FLAGS["admin"] in self.get_flags(sender):
                 bot.copying = True
-                bot.send_action("will start copying the original.", sender)
+                bot.send_action(self.messages.get("copy_original", "will start copying the original."), sender)
                 bot.send_message("list_commands", "Toothless")
                 bot.irc_cursor.execute("SELECT * FROM Commands")

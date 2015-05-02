@@ -97,5 +97,5 @@ class IRCBot(object):
             for line in msg.splitlines():
                 self.handle_block(line)
 
-    def quit(self):
+    def quit(self, message):
         pass
