@@ -1,8 +1,8 @@
 {
     "connection": {
-        "channel": "#cloudjumpertestingchannel",
-        "user_name": "CloudJumper",
-        "nick": "CloudJumper",
+        "channel": "#httyd",
+        "user_name": "Cloudjumper",
+        "nick": "Cloudjumper",
         "password": "",
         "real_name": "github.com/Tmplt/Toothless",
         "server": {

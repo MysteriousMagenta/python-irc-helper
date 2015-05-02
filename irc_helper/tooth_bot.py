@@ -96,13 +96,17 @@ class Toothless(irc_helper.IRCHelper):
             flag = FLAGS.get(flag)
         elif flag not in FLAGS.values():
             raise ToothlessError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
-        self.irc_cursor.execute("SELECT * FROM Flags WHERE username=?", (username,))
+        self.irc_cursor.execute("SELECT * FROM Flags")
         if self.irc_cursor.fetchone() is None:
             self.irc_cursor.execute("INSERT INTO Flags VALUES (0,?,?)", (username, flag))
         else:
-            old_flags = self.get_flags(username)
-            new_flags = "".join(sorted(old_flags + flag))
-            self.irc_cursor.execute("UPDATE Flags WHERE username=? SET flags=?", (username, new_flags))
+            self.irc_cursor.execute("SELECT * FROM Flags WHERE username=?", (username,))
+            if self.irc_cursor.fetchone() is None:
+                self.irc_cursor.execute("INSERT INTO Flags(username,flags) VALUES (?,?)", (username, flag))
+            else:
+                old_flags = self.get_flags(username)
+                new_flags = "".join(sorted(old_flags + flag))
+                self.irc_cursor.execute("UPDATE Flags WHERE username=? SET flags=?", (username, new_flags))
 
     def get_flags(self, username):
         self.irc_cursor.execute("SELECT flags FROM Flags WHERE username=?", (username,))
@@ -140,22 +144,22 @@ class Toothless(irc_helper.IRCHelper):
         def learn_trigger(bot, message, sender):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! learn").lower()
-            if command == respond_to and len(message.split("->", 1)) >= 2 and FLAGS["whitelist"] in bot.get_flags(
-                    sender):
-                bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?",
-                                       message.split(" ", 2)[2].split(" -> ", 1))
-                if bot.irc_cursor.fetchone() is None:
-                    bot.send_action(self.messages.get("learn", "has been trained by {nick}!").format(nick=sender))
+            if command == respond_to and len(message.split("->", 1)) >= 2:
+                if FLAGS["whitelist"] in bot.get_flags(sender):
+                    bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?",
+                                           message.split(" ", 2)[2].split(" -> ", 1))
+                    if bot.irc_cursor.fetchone() is None:
+                        bot.send_action(self.messages.get("learn", "has been trained by {nick}!").format(nick=sender))
 
-                    @self.basic_command()
-                    def learn_comm():
-                        return message.split(" ", 2)[2].split(" -> ", 1)
+                        @self.basic_command()
+                        def learn_comm():
+                            return message.split(" ", 2)[2].split(" -> ", 1)
+                    else:
+                        bot.send_action(self.messages.get("learn_superfluous", "already knows that trick!"))
+                elif FLAGS["whitelist"] not in bot.get_flags(sender):
+                    bot.send_action(self.messages.get("learn_deny", "doesn't want to be trained by {nick}!").format(nick=sender))
                 else:
-                    bot.send_action(self.messages.get("learn_superfluous", "already knows that trick!"))
-            elif FLAGS["whitelist"] not in bot.get_flags(sender):
-                bot.send_action(self.messages.get("learn_deny", "doesn't want to be trained by {nick}!").format(nick=sender))
-            elif "->" in message:
-                bot.send_action(self.messages.get("learn_error", "tilts his head in confusion towards {nick}...").format(nick=sender))
+                    bot.send_action(self.messages.get("learn_error", "tilts his head in confusion towards {nick}...").format(nick=sender))
             return command == respond_to or None
 
         @self.advanced_command(False)
@@ -180,7 +184,7 @@ class Toothless(irc_helper.IRCHelper):
             if command == respond_to and len(message.split(" ")) >= 3:
                 chosen_attack = random.choice(
                     self.messages.get("attacks", ["doesn't have a valid attack for {target}!"]))
-                victim = message.split(" ")[1]
+                victim = message.split(" ")[2]
                 if "{target}" in chosen_attack:
                     chosen_attack = chosen_attack.format(target=victim)
                 else:
