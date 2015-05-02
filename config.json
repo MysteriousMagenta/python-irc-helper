@@ -62,6 +62,7 @@
         "stomach": "is digesting {victims}...",
         "urltitle": "finds the URL title to be: {title}",
         "vomit": "empties his stomach!",
-        "vomit_superfluous": "hasn't eaten anything yet!"
+        "vomit_superfluous": "hasn't eaten anything yet!",
+        "flag_added": "succesfully added {flag} to {user}, new flags: {flags}."
     }
 }

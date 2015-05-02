@@ -281,3 +281,10 @@ class Toothless(irc_helper.IRCHelper):
                 bot.send_action(self.messages.get("copy_original", "will start copying the original."), sender)
                 bot.send_message("list_commands", "Toothless")
                 bot.irc_cursor.execute("SELECT * FROM Commands")
+
+        @self.advanced_command(True)
+        def add_flag_pm(bot, message, sender):
+            if FLAGS["admin"] in sender and message.split(" ")[0] == "add_flag":
+                user, flag = message.split(" ")[1:3]
+                bot.add_flags(user, flag)
+                bot.send_action(self.messages.get("flag_added", "succesfully added {flag} to {user}, new flags: {flags}.").format(user=user, flag=flag, flags="".join(bot.get_flags(user.lower()))), sender)
