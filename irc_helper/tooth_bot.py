@@ -92,6 +92,7 @@ class Toothless(irc_helper.IRCHelper):
         self.send_action(self.messages.get("announce_arrival", "enters the arena!"))
 
     def add_flag(self, username, flag):
+        username = username.lower()
         if flag in FLAGS:
             flag = FLAGS.get(flag)
         elif flag not in FLAGS.values():
@@ -105,10 +106,22 @@ class Toothless(irc_helper.IRCHelper):
                 self.irc_cursor.execute("INSERT INTO Flags(username,flags) VALUES (?,?)", (username, flag))
             else:
                 old_flags = self.get_flags(username)
-                new_flags = "".join(sorted(old_flags + tuple(flag)))
-                self.irc_cursor.execute("UPDATE Flags WHERE username=? SET flags=?", (username, new_flags))
+                new_flags = "".join(sorted(set(old_flags + tuple(flag))))
+                self.irc_cursor.execute("UPDATE Flags SET flags=? WHERE username=?", (new_flags, username))
+
+    def remove_flag(self, username, flag):
+        username = username.lower()
+        if flag in FLAGS:
+            if flag in FLAGS:
+                flag = FLAGS.get(flag)
+            elif flag not in FLAGS.values():
+                raise ToothlessError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
+        old_flags = self.get_flags(username)
+        new_flags = "".join(old_flags).replace(flag, "")
+        self.irc_cursor.execute("UPDATE Flags SET flags=? WHERE username=?", (new_flags, username))
 
     def get_flags(self, username):
+        username = username.lower()
         self.irc_cursor.execute("SELECT flags FROM Flags WHERE username=?", (username,))
         raw_flags = self.irc_cursor.fetchone()
         if raw_flags:
@@ -277,7 +290,29 @@ class Toothless(irc_helper.IRCHelper):
         @self.advanced_command(True)
         def add_flag_pm(bot, message, sender):
             if FLAGS["admin"] in bot.get_flags(sender) and message.split(" ")[0] == "add_flag":
-                user, flag = message.split(" ")[1:3]
-                bot.add_flag(user, flag)
-                flags = "".join(bot.get_flags(user.lower()))
-                bot.send_action(self.messages.get("flag_added", "succesfully added {flag} to {user}, new flags: {flags}.").format(user=user, flag=flag, flags=flags), sender)
+                user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
+                try:
+                    bot.add_flag(user, flag)
+                except ToothlessError:
+                    bot.send_action("doesn't know that flag!")
+                else:
+                    flags = "".join(bot.get_flags(user))
+                    bot.send_action(self.messages.get("flag_added", "successfully added {flag} to {user}, new flags: {flags}").format(user=user, flag=flag, flags=flags), sender)
+
+        @self.advanced_command(True)
+        def rm_flag_pm(bot, message, sender):
+            if FLAGS["admin"] in bot.get_flags(sender) and message.split(" ")[0] == "remove_flag":
+                user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
+                try:
+                    bot.remove_flag(user, flag)
+                except ToothlessError:
+                    bot.send_action("doesn't know that flag!")
+                else:
+                    flags = "".join(bot.get_flags(user))
+                    bot.send_action(
+                        self.messages.get("flag_remove",
+                                          "successfully remove {flag} from {user}, new flags: {flags}").format
+                                          (user=user, flag=flag, flags=flags),
+                                          sender
+                    )
+
