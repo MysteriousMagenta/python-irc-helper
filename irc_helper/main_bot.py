@@ -57,15 +57,14 @@ class IRCHelper(IRCBot):
         block_data = super().handle_block(block)
         if block_data.get("sender") != self.nick:
             if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message", ""):
-                if block_data.get("recipient") == self.channel:
+                if block_data.get("recipient").lower() == self.channel.lower():
                     command_list = self.channel_commands
-                elif block_data.get("recipient") == self.nick:
+                elif block_data.get("recipient").lower() == self.nick.lower():
                     command_list = self.private_commands
                 else:
-                    command_list = []
+                    raise irc_helper.IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
                 for func_command in command_list:
-                    if func_command(self, block_data.get("message"), block_data.get("sender")) is not None:
-                        break
+                    func_command(self, block_data.get("message"), block_data.get("sender"))
                 if block_data.get("recipient") == self.channel:
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
@@ -78,7 +77,7 @@ class IRCHelper(IRCBot):
                             for group, value in named_groups.items():
                                 new_response = new_response.replace(group, value)
                             self.send_action(new_response)
-                            break
+
         return block_data  # Yes.
 
     def quit(self, message):

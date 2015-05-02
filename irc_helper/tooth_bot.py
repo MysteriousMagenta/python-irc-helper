@@ -105,7 +105,7 @@ class Toothless(irc_helper.IRCHelper):
                 self.irc_cursor.execute("INSERT INTO Flags(username,flags) VALUES (?,?)", (username, flag))
             else:
                 old_flags = self.get_flags(username)
-                new_flags = "".join(sorted(old_flags + flag))
+                new_flags = "".join(sorted(old_flags + tuple(flag)))
                 self.irc_cursor.execute("UPDATE Flags WHERE username=? SET flags=?", (username, new_flags))
 
     def get_flags(self, username):
@@ -138,7 +138,6 @@ class Toothless(irc_helper.IRCHelper):
                 # TODO Implement proper Youtube API
             else:
                 bot.send_action("wasn't able to get URL info! [{}]".format(sender, req.status_code))
-            return True
 
         @self.advanced_command(False)
         def learn_trigger(bot, message, sender):
@@ -160,7 +159,6 @@ class Toothless(irc_helper.IRCHelper):
                     bot.send_action(self.messages.get("learn_deny", "doesn't want to be trained by {nick}!").format(nick=sender))
                 else:
                     bot.send_action(self.messages.get("learn_error", "tilts his head in confusion towards {nick}...").format(nick=sender))
-            return command == respond_to or None
 
         @self.advanced_command(False)
         def forget_trigger(bot, message, sender):
@@ -175,7 +173,6 @@ class Toothless(irc_helper.IRCHelper):
                     bot.forget_basic_command(trigger)
                 else:
                     bot.send_action(self.messages.get("forget_superfluous", "doesn't know that trick!").format(nick=sender))
-            return command == respond_to or None
 
         @self.advanced_command(False)
         def attack(bot, message, sender):
@@ -190,7 +187,6 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     chosen_attack += victim
                 bot.send_action(chosen_attack)
-            return command == respond_to or None
 
         @self.advanced_command(False)
         def eat(bot, message, sender):
@@ -203,7 +199,6 @@ class Toothless(irc_helper.IRCHelper):
                     bot.stomach.add(victim)
                 else:
                     bot.send_action(self.messages.get("eat_inedible", "doesn't feel like eating {victim}!").format(victim=victim))
-            return command == respond_to or None
 
         @self.advanced_command(False)
         def spit(bot, message, sender):
@@ -218,7 +213,6 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     bot.send_action("hasn't eaten {} yet!".format(victim))
             bot.stomach = set(bot.stomach)
-            return (command == respond_to and len(message.split(" ")) >= 3) or None
 
         @self.advanced_command(False)
         def show_stomach(bot, message, sender):
@@ -230,7 +224,6 @@ class Toothless(irc_helper.IRCHelper):
                     bot.send_action("is digesting {}!".format(stomachs))
                 else:
                     bot.send_action("hasn't eaten anything yet!")
-            return command == respond_to or None
 
         @self.advanced_command(False)
         def vomit(bot, message, sender):
@@ -242,7 +235,6 @@ class Toothless(irc_helper.IRCHelper):
                     bot.stomach = set()
                 else:
                     bot.send_action(self.messages.get("vomit_superfluous", "hasn't eaten anything yet!"))
-            return command == respond_to or None
 
         @self.advanced_command(True)
         def clear_commands(bot, message, sender):
@@ -286,7 +278,6 @@ class Toothless(irc_helper.IRCHelper):
         def add_flag_pm(bot, message, sender):
             if FLAGS["admin"] in bot.get_flags(sender) and message.split(" ")[0] == "add_flag":
                 user, flag = message.split(" ")[1:3]
-                bot.add_flags(user, flag)
+                bot.add_flag(user, flag)
                 flags = "".join(bot.get_flags(user.lower()))
                 bot.send_action(self.messages.get("flag_added", "succesfully added {flag} to {user}, new flags: {flags}.").format(user=user, flag=flag, flags=flags), sender)
-                return True
