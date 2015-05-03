@@ -4,6 +4,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 
 
 parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
@@ -20,6 +21,7 @@ class IRCHelper(IRCBot):
         super().__init__(*args, **kwargs)
         self.channel_commands = set()
         self.private_commands = set()
+        self.times = dict()
         self.command_database = sqlite3.connect(database_name)
         self.irc_cursor = self.command_database.cursor()
         self.irc_cursor.execute("SELECT name FROM sqlite_master WHERE type=\"table\"")
@@ -54,6 +56,10 @@ class IRCHelper(IRCBot):
     def forget_basic_command(self, trigger):
         self.irc_cursor.execute("DELETE FROM Commands WHERE trigger=?", (trigger,))
 
+    def since_last_comment(self, user):
+        t = time.time() - self.times.get(user, 0)
+        return 0 if t < 0 else t
+
     def handle_block(self, block):
         block_data = super().handle_block(block)
         if block_data.get("sender") != self.nick:
@@ -64,12 +70,13 @@ class IRCHelper(IRCBot):
                     command_list = self.private_commands
                 else:
                     raise IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
-                for func_command in command_list:
-                    func_command(self, block_data.get("message"), block_data.get("sender"))
                 if block_data.get("recipient") == self.channel:
+                    print(self.since_last_comment(block_data.get("sender")))
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
-                        matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""))
+                        if self.since_last_comment(block_data.get("sender")) < 3:
+                            break
+                        matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""), re.IGNORECASE)
                         if matched:
                             named_groups = {"${nick}": block_data.get("sender")}
                             new_response = response
@@ -78,6 +85,16 @@ class IRCHelper(IRCBot):
                             for group, value in named_groups.items():
                                 new_response = new_response.replace(group, value)
                             self.send_action(new_response)
+                            self.times[block_data.get("sender", "")] = time.time()
+
+
+                for func_command in command_list:
+                    if self.since_last_comment(block_data.get("sender")) < 3:
+                        break
+                    if func_command(self, block_data.get("message"), block_data.get("sender")):
+                        self.times[block_data.get("sender", "")] = time.time()
+                        break
+
 
         return block_data  # Yes.
 
