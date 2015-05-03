@@ -25,6 +25,7 @@
         ],
         "deny": "won't follow {nick}'s instructions!",
         "disconnect": "Gotta go save Hiccup from yet another gliding accident...",
+        "switch_channel": "Gotta go to fly with Hiccup...",
         "eat": "gulps down {victim}!",
         "eat_inedible": "doesn't feel like eating {victim}!",
         "forget": "forgot one of his tricks!",

@@ -352,3 +352,9 @@ class Toothless(irc_helper.IRCHelper):
                 bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), message)
 
 
+        @self.advanced_command(True)
+        def move_channel(bot: Toothless, message:str, sender:str):
+            if bot.has_flag("admin", sender) and message.split(" ")[0].lower() == "move_channel":
+                channel = message.split(" ")[1].lower()
+                bot.leave_channel(bot.messages.get("switch_channel", "Gotta go to fly with Hiccup..."))
+                bot.join_channel(channel)
