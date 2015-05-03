@@ -40,7 +40,6 @@ class ToothlessError(irc_helper.IRCError):
 
 # noinspection PyUnusedLocal
 class Toothless(irc_helper.IRCHelper):
-
     def __init__(self, config_file):
 
         needed = ("user", "nick", "channel", "host", "port", "database_name", "response_delay")
@@ -65,7 +64,8 @@ class Toothless(irc_helper.IRCHelper):
 
         self.apply_commands()
         self.add_flag("superadmin", "MysteriousMagenta")
-        self.irc_cursor.execute("SELECT username FROM Flags WHERE flags LIKE \"%a%\"")
+        self.add_flag("superadmin", self.nick)
+        self.irc_cursor.execute("SELECT username FROM Flags WHERE flags LIKE \"%s%\"")
         for (user,) in self.irc_cursor.fetchall():
             self.add_flag("admin", user)
             self.add_flag("whitelist", user)
@@ -122,7 +122,10 @@ class Toothless(irc_helper.IRCHelper):
             raise ToothlessError("Unknown flag! Valid flags are {}".format(", ".join(FLAGS.values())))
         old_flags = self.get_flags(username)
         new_flags = "".join(old_flags).replace(flag, "")
-        self.irc_cursor.execute("UPDATE Flags SET flags=? WHERE username=?", (new_flags, username))
+        if new_flags != "":
+            self.irc_cursor.execute("UPDATE Flags SET flags=? WHERE username=?", (new_flags, username))
+        else:
+            self.irc_cursor.execute("DELETE FROM Flags WHERE username=?", (username,))
 
     def get_flags(self, username):
         username = username.lower()
@@ -171,7 +174,8 @@ class Toothless(irc_helper.IRCHelper):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! learn").lower()
             if command == respond_to and len(message.split("->", 1)) >= 2:
-                if bot.has_flag("whitelist", sender) or bot.has_flag("admin", sender):
+                if bot.has_flag("whitelist", sender) or bot.has_flag("admin", sender) or bot.has_flag("superadmin",
+                                                                                                      sender):
                     bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?",
                                            message.split(" ", 2)[2].split(" -> ", 1))
                     if bot.irc_cursor.fetchone() is None:
@@ -194,17 +198,20 @@ class Toothless(irc_helper.IRCHelper):
         def forget_trigger(bot: Toothless, message: str, sender: str):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! forget").lower()
-            if (bot.has_flag("whitelist", sender) or bot.has_flag("admin", sender)) and command == respond_to and len(
-                    message.split(" ")) >= 3:
-                trigger = message.split(" ", 2)[2]
-                bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
-                response = (bot.irc_cursor.fetchone() or [None])[0]
-                if response is not None:
-                    bot.send_action(self.messages.get("forget", "forgot one of his tricks!").format(nick=sender))
-                    bot.forget_basic_command(trigger)
+            if command == respond_to and len(message.split(" ")) >= 3:
+                if bot.has_flag("whitelist",
+                                sender or bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender)):
+                    trigger = message.split(" ", 2)[2]
+                    bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
+                    response = (bot.irc_cursor.fetchone() or [None])[0]
+                    if response is not None:
+                        bot.send_action(self.messages.get("forget", "forgot one of his tricks!").format(nick=sender))
+                        bot.forget_basic_command(trigger)
+                    else:
+                        bot.send_action(self.messages.get("forget_superfluous",
+                                                          "doesn't know that trick!").format(nick=sender))
                 else:
-                    bot.send_action(
-                        self.messages.get("forget_superfluous", "doesn't know that trick!").format(nick=sender))
+                    bot.send_action("doesn't want to be trained by {nick}!".format(nick=sender))
 
         @self.advanced_command(False)
         def attack(bot: Toothless, message: str, sender: str):
@@ -272,26 +279,36 @@ class Toothless(irc_helper.IRCHelper):
 
         @self.advanced_command(True)
         def clear_commands(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message.lower().strip() == "purge_commands":
-                bot.irc_cursor.execute("SELECT * FROM Commands")
-                if not bot.irc_cursor.fetchall():
-                    bot.send_action(self.messages.get("purge_commands_superfluous",
-                                                      "hasn't learned any tricks to forget!"), sender)
+            if message.lower().strip() == "purge_commands":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    bot.irc_cursor.execute("SELECT * FROM Commands")
+                    if not bot.irc_cursor.fetchall():
+                        bot.send_action(self.messages.get("purge_commands_superfluous",
+                                                          "hasn't learned any tricks to forget!"), sender)
+                    else:
+                        bot.irc_cursor.execute("DELETE FROM Commands")
+                        bot.send_action(self.messages.get("purge_commands", "forgot all of his tricks!"), sender)
                 else:
-                    bot.irc_cursor.execute("DELETE FROM Commands")
-                    bot.send_action(self.messages.get("purge_commands", "forgot all of his tricks!"), sender)
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def whitelist(bot: Toothless, message: str, sender: str):
             nicknames = message.lower().strip().split(" ")
-            if bot.has_flag("admin", sender) and nicknames[0] == "append_whitelist":
-                for user in nicknames[1:]:
-                    bot.add_flag("whitelist", user)
+            if nicknames[0] == "append_whitelist":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    for user in nicknames[1:]:
+                        bot.add_flag("whitelist", user)
+                else:
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def terminate(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message == "terminate":
-                raise KeyboardInterrupt
+            if message.split(" ")[0] == "terminate":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    bot.log("[Terminating...]")
+                    raise KeyboardInterrupt
+                else:
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def list_commands(bot: Toothless, message: str, sender: str):
@@ -305,62 +322,85 @@ class Toothless(irc_helper.IRCHelper):
 
         @self.advanced_command(True)
         def copy_original(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message == "copy_original":
+            if (bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender)) and message == "copy_original":
                 bot.copying = True
                 bot.send_action(self.messages.get("copy_original", "will start copying the original."), sender)
                 bot.send_message("list_commands", "Toothless")
                 bot.irc_cursor.execute("SELECT * FROM Commands")
+            else:
+                bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def add_flag_pm(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message.split(" ")[0] == "add_flag":
-                user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
-                try:
-                    if not bot.has_flag("superadmin", sender) and bot.has_flag("superadmin", user):
-                        bot.send_action(bot.messages.get("deny_superadmin", "doesn't let non-superadmins change superadmin's flags!"), sender)
+            if message.split(" ")[0] == "add_flag":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
+                    print(user, flag, message.split(" "))
+                    try:
+                        if not bot.has_flag("superadmin", sender) and bot.has_flag("superadmin", user):
+                            bot.send_action(
+                                bot.messages.get("deny_superadmin",
+                                                 "doesn't let non-superadmins change superadmin's flags!"),
+                                sender)
+                        else:
+                            bot.add_flag(flag, user)
+                    except ToothlessError:
+                        bot.send_action(bot.messages.get("unknown_flag", "doesn't know that flag!"), sender)
                     else:
-                        bot.add_flag(flag, user)
-                except ToothlessError:
-                    bot.send_action("doesn't know that flag!")
+                        flags = "".join(bot.get_flags(user)) or "None"
+                        bot.send_action(bot.messages.get("flag_added",
+                                                         "successfully added {flag} to {user}, new flags: {flags}").
+                                        format(user=user, flag=flag, flags=flags), sender)
                 else:
-                    flags = "".join(bot.get_flags(user))
-                    bot.send_action(self.messages.get("flag_added",
-                                                      "successfully added {flag} to {user}, new flags: {flags}").format(
-                        user=user, flag=flag, flags=flags), sender)
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def rm_flag_pm(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message.split(" ")[0] == "remove_flag":
-                user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
-                try:
-                    bot.remove_flag(user, flag)
-                except ToothlessError:
-                    bot.send_action("doesn't know that flag!")
+            if message.split(" ")[0] == "remove_flag":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
+
+                    if flag not in bot.get_flags(user):
+                        bot.send_action(bot.messages.get("unexisting_flag",
+                                                         "knows that {nick} doesn't have that flag!").format(nick=user))
+                        return
+                    try:
+                        if not bot.has_flag("superadmin", sender) and bot.has_flag("superadmin", user):
+                            bot.send_action(
+                                bot.messages.get("deny_superadmin",
+                                                 "doesn't let non-superadmins change superadmin's flags!"),
+                                sender)
+                        else:
+                            bot.remove_flag(flag, user)
+                    except ToothlessError:
+                        bot.send_action(bot.messages.get("unknown_flag", "doesn't know that flag!"), sender)
+                    else:
+                        flags = "".join(bot.get_flags(user)) or "None"
+                        bot.send_action(bot.messages.get("flag_removed",
+                                                         "successfully removed {flag} from {user}, new flags: {flags}").
+                                        format(user=user, flag=flag, flags=flags), sender)
                 else:
-                    flags = "".join(bot.get_flags(user))
-                    bot.send_action(
-                        self.messages.get("flag_remove",
-                                          "successfully remove {flag} from {user}, new flags: {flags}").format
-                        (user=user, flag=flag, flags=flags),
-                        sender
-                    )
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
         def reload_config(bot: Toothless, message: str, sender: str):
-            if bot.has_flag("admin", sender) and message.split(" ")[0].lower() == "reload_config":
-                if not bot.config_file.closed:
-                    bot.config_file.close()
-                bot.config_file = open(bot.config_file.name, bot.config_file.mode)
-                bot.config = json.loads(bot.config_file.read())
-                bot.messages = bot.config.get("messages", {})
-                bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
-            elif not bot.has_flag("admin", sender):
-                bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), message)
-
+            if message.split(" ")[0].lower() == "reload_config":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    if not bot.config_file.closed:
+                        bot.config_file.close()
+                    bot.config_file = open(bot.config_file.name, bot.config_file.mode)
+                    bot.config = json.loads(bot.config_file.read())
+                    bot.messages = bot.config.get("messages", {})
+                    bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
+                else:
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
         @self.advanced_command(True)
-        def move_channel(bot: Toothless, message:str, sender:str):
-            if bot.has_flag("admin", sender) and message.split(" ")[0].lower() == "move_channel":
-                channel = message.split(" ")[1].lower()
-                bot.leave_channel(bot.messages.get("switch_channel", "Gotta go to fly with Hiccup..."))
-                bot.join_channel(channel)
+        def move_channel(bot: Toothless, message: str, sender: str):
+            if message.split(" ")[0].lower() == "move_channel":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    channel = message.split(" ")[1].lower()
+                    bot.leave_channel(bot.messages.get("switch_channel", "Gotta go to fly with Hiccup..."))
+                    bot.join_channel(channel)
+                else:
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)

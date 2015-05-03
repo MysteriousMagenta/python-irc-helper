@@ -67,6 +67,8 @@
         "vomit_superfluous": "hasn't eaten anything yet!",
         "flag_added": "successfully added {flag} to {user}, new flags: {flags}",
         "flag_remove": "successfully removed {flag} from {user}, new flags: {flags}",
+        "unexisting_flag": "knows that {nick} doesn't have that flag!",
+        "unknown_flag": "doesn't know that flag!",
         "deny_command": "won't listen to you!",
         "config_closed": "can't access his config!",
         "config_reloaded": "successfully reloaded his config!"
