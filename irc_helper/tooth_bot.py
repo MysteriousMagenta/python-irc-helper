@@ -343,12 +343,11 @@ class Toothless(irc_helper.IRCHelper):
         def reload_config(bot: Toothless, message: str, sender: str):
             if bot.has_flag("admin", sender) and message.split(" ")[0].lower() == "reload_config":
                 if not bot.config_file.closed:
-                    bot.config_file = open(bot.config_file.name, bot.config_file.mode)
-                    bot.config = json.loads(bot.config_file.read())
-                    bot.messages = bot.config.get("messages", {})
-                    bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
-                else:
-                    bot.send_action(bot.messages.get("config_closed", "can't access his config!"), sender)
+                    bot.config_file.close()
+                bot.config_file = open(bot.config_file.name, bot.config_file.mode)
+                bot.config = json.loads(bot.config_file.read())
+                bot.messages = bot.config.get("messages", {})
+                bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
             elif not bot.has_flag("admin", sender):
                 bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), message)
 
