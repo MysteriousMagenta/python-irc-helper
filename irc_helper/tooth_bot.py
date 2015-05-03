@@ -28,6 +28,7 @@ url_validator = re.compile(
 
 FLAGS = {
     "admin": "a",
+    "superadmin": "s",
     "whitelist": "w",
     "ignore": "i",
 }
@@ -63,9 +64,11 @@ class Toothless(irc_helper.IRCHelper):
         super().__init__(**{k: v for k, v in self.connection.items() if k in needed})
 
         self.apply_commands()
-        self.add_flag("MysteriousMagenta", "a")
-
-
+        self.add_flag("superadmin", "MysteriousMagenta")
+        self.irc_cursor.execute("SELECT username FROM Flags WHERE flags LIKE \"%a%\"")
+        for (user,) in self.irc_cursor.fetchall():
+            self.add_flag("admin", user)
+            self.add_flag("whitelist", user)
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
@@ -93,7 +96,7 @@ class Toothless(irc_helper.IRCHelper):
         super().join_channel(channel)
         self.send_action(self.messages.get("announce_arrival", "enters the arena!"))
 
-    def add_flag(self, username, flag):
+    def add_flag(self, flag, username):
         username = username.lower()
         if flag in FLAGS:
             flag = FLAGS[flag]
@@ -111,7 +114,7 @@ class Toothless(irc_helper.IRCHelper):
                 new_flags = "".join(sorted(set(old_flags + tuple(flag))))
                 self.irc_cursor.execute("UPDATE Flags SET flags=? WHERE username=?", (new_flags, username))
 
-    def remove_flag(self, username, flag):
+    def remove_flag(self, flag, username):
         username, flag = username.lower(), flag.lower()
         if flag in FLAGS:
             flag = FLAGS.get(flag)
@@ -282,8 +285,8 @@ class Toothless(irc_helper.IRCHelper):
         def whitelist(bot: Toothless, message: str, sender: str):
             nicknames = message.lower().strip().split(" ")
             if bot.has_flag("admin", sender) and nicknames[0] == "append_whitelist":
-                for i in nicknames[1:]:
-                    bot.add_flag(i, "whitelist")
+                for user in nicknames[1:]:
+                    bot.add_flag("whitelist", user)
 
         @self.advanced_command(True)
         def terminate(bot: Toothless, message: str, sender: str):
@@ -313,7 +316,10 @@ class Toothless(irc_helper.IRCHelper):
             if bot.has_flag("admin", sender) and message.split(" ")[0] == "add_flag":
                 user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
                 try:
-                    bot.add_flag(user, flag)
+                    if not bot.has_flag("superadmin", sender) and bot.has_flag("superadmin", user):
+                        bot.send_action(bot.messages.get("deny_superadmin", "doesn't let non-superadmins change superadmin's flags!"), sender)
+                    else:
+                        bot.add_flag(flag, user)
                 except ToothlessError:
                     bot.send_action("doesn't know that flag!")
                 else:
