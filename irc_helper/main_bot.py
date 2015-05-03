@@ -10,15 +10,16 @@ parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
 if parent_directory not in sys.path:
     sys.path.insert(0, parent_directory)
 
-from irc_helper import IRCBot
+from irc_helper import IRCBot, IRCError
 
 group_finder = re.compile("\(\?P<(.*?)>")
+
 
 class IRCHelper(IRCBot):
     def __init__(self, database_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.channel_commands = []
-        self.private_commands = []
+        self.channel_commands = set()
+        self.private_commands = set()
         self.command_database = sqlite3.connect(database_name)
         self.irc_cursor = self.command_database.cursor()
         self.irc_cursor.execute("SELECT name FROM sqlite_master WHERE type=\"table\"")
@@ -31,7 +32,7 @@ class IRCHelper(IRCBot):
     # To add a command.
     # For commands that are functions.
     def advanced_command(self, private_message=False):
-        return self.channel_commands.append if not private_message else self.private_commands.append
+        return self.channel_commands.add if not private_message else self.private_commands.add
 
     # Use this if your function returns (trigger, command)
     def basic_command(self, *args, **kwargs):
@@ -62,7 +63,7 @@ class IRCHelper(IRCBot):
                 elif block_data.get("recipient").lower() == self.nick.lower():
                     command_list = self.private_commands
                 else:
-                    raise irc_helper.IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
+                    raise IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
                 for func_command in command_list:
                     func_command(self, block_data.get("message"), block_data.get("sender"))
                 if block_data.get("recipient") == self.channel:

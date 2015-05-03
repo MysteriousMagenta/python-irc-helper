@@ -55,7 +55,7 @@ class IRCBot(object):
         self.socket.send("PRIVMSG {} :{}\r\n".format(send_to, message).encode())
 
     def send_action(self, message, send_to=None):
-        self.send_message("\u0001ACTION {}\u0001".format(message), send_to)
+        self.send_message("\u0001ACTION \x0303{}\u0001".format(message), send_to)
 
     def handle_block(self, block):
         message_parts = block.split(" ", 1)
