@@ -10,6 +10,7 @@
     },
     "inedible_victims": ["Cloudjumper"],
     "database_name": "irc_database.db",
+    "response_delay": 3,
     "messages": {
         "announce_arrival": "enters the arena!",
         "append_whitelist_existing": "The rest were already on the whitelist.",

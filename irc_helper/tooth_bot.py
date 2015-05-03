@@ -42,7 +42,7 @@ class Toothless(irc_helper.IRCHelper):
 
     def __init__(self, config_file, close_afterwards=True):
 
-        needed = ("user", "nick", "channel", "host", "port", "database_name")
+        needed = ("user", "nick", "channel", "host", "port", "database_name", "response_delay")
         self.stomach = set()
         self.config = json.loads(config_file.read())
         self.messages = self.config.get("messages", {})

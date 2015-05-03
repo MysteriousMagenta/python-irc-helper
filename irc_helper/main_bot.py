@@ -17,11 +17,12 @@ group_finder = re.compile("\(\?P<(.*?)>")
 
 
 class IRCHelper(IRCBot):
-    def __init__(self, database_name, *args, **kwargs):
+    def __init__(self, database_name, response_delay=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.channel_commands = set()
         self.private_commands = set()
         self.times = dict()
+        self.response_delay = 3 if response_delay is None else response_delay
         self.command_database = sqlite3.connect(database_name)
         self.irc_cursor = self.command_database.cursor()
         self.irc_cursor.execute("SELECT name FROM sqlite_master WHERE type=\"table\"")
@@ -74,7 +75,7 @@ class IRCHelper(IRCBot):
                     print(self.since_last_comment(block_data.get("sender")))
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
-                        if self.since_last_comment(block_data.get("sender")) < 3:
+                        if self.since_last_comment(block_data.get("sender")) < self.response_delay:
                             break
                         matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""), re.IGNORECASE)
                         if matched:
@@ -89,7 +90,7 @@ class IRCHelper(IRCBot):
 
 
                 for func_command in command_list:
-                    if self.since_last_comment(block_data.get("sender")) < 3:
+                    if self.since_last_comment(block_data.get("sender")) < self.response_delay:
                         break
                     if func_command(self, block_data.get("message"), block_data.get("sender")):
                         self.times[block_data.get("sender", "")] = time.time()
