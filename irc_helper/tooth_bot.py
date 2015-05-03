@@ -82,11 +82,12 @@ class Toothless(irc_helper.IRCHelper):
                 self.send_action(greeting)
         if block_data.get("sender") == "Toothless" and block_data.get("recipient") == self.nick:
             try:
-                trigger, response = block_data.get("message", "").split(" -> ", 1)
+                trigger, response = block_data.get("message", "").split("->", 1)
             except ValueError:
                 # Signifies that the message is not a command.
-                pass
+                self.log("[Invalid Command From Toothless...]")
             else:
+                self.log("[Taking Command From Toothless...]")
                 @self.basic_command()
                 def dummy():
                     return trigger, response
@@ -168,6 +169,7 @@ class Toothless(irc_helper.IRCHelper):
                 # TODO Implement proper Youtube API
             else:
                 bot.send_action("wasn't able to get URL info! [{}]".format(sender, req.status_code))
+            return True
 
         @self.advanced_command(False)
         def learn_trigger(bot: Toothless, message: str, sender: str):
@@ -175,15 +177,17 @@ class Toothless(irc_helper.IRCHelper):
             respond_to = (bot.nick.lower() + "! learn").lower()
             if command == respond_to and len(message.split("->", 1)) >= 2:
                 if bot.has_flag("whitelist", sender) or bot.has_flag("admin", sender) or bot.has_flag("superadmin",
-                                                                                                      sender):
+                                                                                                       sender):
+                    trigger, response = message.split(" ", 2)[2].split("->", 1)
+                    trigger, response = trigger.strip(), response.strip()
                     bot.irc_cursor.execute("SELECT * FROM Commands WHERE trigger=? AND response=?",
-                                           message.split(" ", 2)[2].split(" -> ", 1))
+                                          (trigger, response))
                     if bot.irc_cursor.fetchone() is None:
                         bot.send_action(self.messages.get("learn", "has been trained by {nick}!").format(nick=sender))
 
                         @self.basic_command()
                         def learn_comm():
-                            return message.split(" ", 2)[2].split(" -> ", 1)
+                            return (trigger, response)
                     else:
                         bot.send_action(self.messages.get("learn_superfluous", "already knows that trick!"))
                 elif not bot.has_flag("whitelist", sender):
@@ -193,14 +197,14 @@ class Toothless(irc_helper.IRCHelper):
                     bot.send_action(
                         self.messages.get("learn_error", "tilts his head in confusion towards {nick}...").format(
                             nick=sender))
+                return True
 
         @self.advanced_command(False)
         def forget_trigger(bot: Toothless, message: str, sender: str):
             command = " ".join(message.split(" ")[:2]).lower()
             respond_to = (bot.nick.lower() + "! forget").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
-                if bot.has_flag("whitelist",
-                                sender or bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender)):
+                if bot.has_flag("whitelist", sender) or bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
                     trigger = message.split(" ", 2)[2]
                     bot.irc_cursor.execute("SELECT response FROM Commands WHERE trigger=?", (trigger,))
                     response = (bot.irc_cursor.fetchone() or [None])[0]
@@ -212,6 +216,7 @@ class Toothless(irc_helper.IRCHelper):
                                                           "doesn't know that trick!").format(nick=sender))
                 else:
                     bot.send_action("doesn't want to be trained by {nick}!".format(nick=sender))
+                return True
 
         @self.advanced_command(False)
         def attack(bot: Toothless, message: str, sender: str):
@@ -226,6 +231,7 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     chosen_attack += victim
                 bot.send_action(chosen_attack)
+                return True
 
         @self.advanced_command(False)
         def eat(bot: Toothless, message: str, sender: str):
@@ -233,12 +239,13 @@ class Toothless(irc_helper.IRCHelper):
             respond_to = (bot.nick.lower() + "! eat").lower()
             if command == respond_to and len(message.split(" ")) >= 3:
                 victim = message.split(" ", 2)[2]
-                if victim not in self.config.get("inedible_victims"):
+                if victim.lower() not in map(lambda x: x.lower(), self.config.get("inedible_victims")):
                     bot.send_action(self.messages.get("eat", "gulps down {victim}!").format(victim=victim))
                     bot.stomach.add(victim)
                 else:
                     bot.send_action(
                         self.messages.get("eat_inedible", "doesn't feel like eating {victim}!").format(victim=victim))
+                return True
 
         @self.advanced_command(False)
         def spit(bot: Toothless, message: str, sender: str):
@@ -254,6 +261,7 @@ class Toothless(irc_helper.IRCHelper):
                 else:
                     bot.send_action("hasn't eaten {} yet!".format(victim))
             bot.stomach = set(bot.stomach)
+            return command == respond_to and len(message.split(" ")) >= 3
 
         @self.advanced_command(False)
         def show_stomach(bot: Toothless, message: str, sender: str):
@@ -265,6 +273,7 @@ class Toothless(irc_helper.IRCHelper):
                     bot.send_action(bot.messages.get("stomach", "is digesting {victims}...").format(victims=stomachs))
                 else:
                     bot.send_action(bot.messages.get("stomach_empty", "isn't digesting anyone..."))
+                return True
 
         @self.advanced_command(False)
         def vomit(bot: Toothless, message: str, sender: str):
@@ -276,10 +285,11 @@ class Toothless(irc_helper.IRCHelper):
                     bot.stomach = set()
                 else:
                     bot.send_action(self.messages.get("vomit_superfluous", "hasn't eaten anything yet!"))
+                return True
 
         @self.advanced_command(True)
         def clear_commands(bot: Toothless, message: str, sender: str):
-            if message.lower().strip() == "purge_commands":
+            if message.lower().split(" ")[0] == "purge_commands":
                 if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
                     bot.irc_cursor.execute("SELECT * FROM Commands")
                     if not bot.irc_cursor.fetchall():
@@ -288,18 +298,10 @@ class Toothless(irc_helper.IRCHelper):
                     else:
                         bot.irc_cursor.execute("DELETE FROM Commands")
                         bot.send_action(self.messages.get("purge_commands", "forgot all of his tricks!"), sender)
-                else:
-                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
 
-        @self.advanced_command(True)
-        def whitelist(bot: Toothless, message: str, sender: str):
-            nicknames = message.lower().strip().split(" ")
-            if nicknames[0] == "append_whitelist":
-                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
-                    for user in nicknames[1:]:
-                        bot.add_flag("whitelist", user)
                 else:
                     bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True
 
         @self.advanced_command(True)
         def terminate(bot: Toothless, message: str, sender: str):
@@ -312,30 +314,32 @@ class Toothless(irc_helper.IRCHelper):
 
         @self.advanced_command(True)
         def list_commands(bot: Toothless, message: str, sender: str):
-            if message == "list_commands":
+            if message.lower().split(" ")[0] == "list_commands":
                 bot.irc_cursor.execute("SELECT trigger,response FROM Commands")
                 for trigger, response in bot.irc_cursor.fetchall():
                     bot.send_message(
                         self.messages.get("print_command", "{trigger} -> {response}").format(trigger=trigger,
                                                                                              response=response),
                         sender)
+                return True
 
         @self.advanced_command(True)
         def copy_original(bot: Toothless, message: str, sender: str):
-            if (bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender)) and message == "copy_original":
-                bot.copying = True
-                bot.send_action(self.messages.get("copy_original", "will start copying the original."), sender)
-                bot.send_message("list_commands", "Toothless")
-                bot.irc_cursor.execute("SELECT * FROM Commands")
-            else:
-                bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+            if message == "copy_original":
+                if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
+                    bot.copying = True
+                    bot.send_action(self.messages.get("copy_original", "will start copying the original."), sender)
+                    bot.send_message("list_commands", "Toothless")
+
+                else:
+                    bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True
 
         @self.advanced_command(True)
         def add_flag_pm(bot: Toothless, message: str, sender: str):
             if message.split(" ")[0] == "add_flag":
                 if bot.has_flag("admin", sender) or bot.has_flag("superadmin", sender):
                     user, flag = map(lambda x: x.lower(), message.split(" ")[1:3])
-                    print(user, flag, message.split(" "))
                     try:
                         if not bot.has_flag("superadmin", sender) and bot.has_flag("superadmin", user):
                             bot.send_action(
@@ -344,6 +348,7 @@ class Toothless(irc_helper.IRCHelper):
                                 sender)
                         else:
                             bot.add_flag(flag, user)
+
                     except ToothlessError:
                         bot.send_action(bot.messages.get("unknown_flag", "doesn't know that flag!"), sender)
                     else:
@@ -353,6 +358,7 @@ class Toothless(irc_helper.IRCHelper):
                                         format(user=user, flag=flag, flags=flags), sender)
                 else:
                     bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True
 
         @self.advanced_command(True)
         def rm_flag_pm(bot: Toothless, message: str, sender: str):
@@ -372,6 +378,7 @@ class Toothless(irc_helper.IRCHelper):
                                 sender)
                         else:
                             bot.remove_flag(flag, user)
+
                     except ToothlessError:
                         bot.send_action(bot.messages.get("unknown_flag", "doesn't know that flag!"), sender)
                     else:
@@ -381,6 +388,7 @@ class Toothless(irc_helper.IRCHelper):
                                         format(user=user, flag=flag, flags=flags), sender)
                 else:
                     bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True
 
         @self.advanced_command(True)
         def reload_config(bot: Toothless, message: str, sender: str):
@@ -392,8 +400,10 @@ class Toothless(irc_helper.IRCHelper):
                     bot.config = json.loads(bot.config_file.read())
                     bot.messages = bot.config.get("messages", {})
                     bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
+
                 else:
                     bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True
 
         @self.advanced_command(True)
         def move_channel(bot: Toothless, message: str, sender: str):
@@ -402,5 +412,7 @@ class Toothless(irc_helper.IRCHelper):
                     channel = message.split(" ")[1].lower()
                     bot.leave_channel(bot.messages.get("switch_channel", "Gotta go to fly with Hiccup..."))
                     bot.join_channel(channel)
+
                 else:
                     bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), sender)
+                return True

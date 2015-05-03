@@ -64,29 +64,13 @@ class IRCHelper(IRCBot):
     def handle_block(self, block):
         block_data = super().handle_block(block)
         if block_data.get("sender") != self.nick:
-            if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message", ""):
+            if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message"):
                 if block_data.get("recipient").lower() == self.channel.lower():
                     command_list = self.channel_commands
                 elif block_data.get("recipient").lower() == self.nick.lower():
                     command_list = self.private_commands
                 else:
                     raise IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
-
-                recipient = self.channel if block_data.get("recipient") != self.nick else block_data.get("sender")
-                self.irc_cursor.execute("SELECT trigger,response FROM Commands")
-                for trigger, response in self.irc_cursor.fetchall():
-                    if self.since_last_comment(block_data.get("sender")) < self.response_delay:
-                        break
-                    matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""), re.IGNORECASE)
-                    if matched:
-                        named_groups = {"${nick}": block_data.get("sender")}
-                        new_response = response
-                        for group_name in group_finder.findall(trigger):
-                            named_groups["${" + group_name + "}"] = matched.group(group_name)
-                        for group, value in named_groups.items():
-                            new_response = new_response.replace(group, value)
-                        self.send_action(new_response, recipient)
-                        self.times[block_data.get("sender", "")] = time.time()
 
 
                 for func_command in command_list:
@@ -95,6 +79,22 @@ class IRCHelper(IRCBot):
                     if func_command(self, block_data.get("message"), block_data.get("sender")):
                         self.times[block_data.get("sender", "")] = time.time()
                         break
+
+                if block_data.get("recipient") == self.channel:
+                    self.irc_cursor.execute("SELECT trigger,response FROM Commands")
+                    for trigger, response in self.irc_cursor.fetchall():
+                        if self.since_last_comment(block_data.get("sender")) < self.response_delay:
+                            break
+                        matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""), re.IGNORECASE)
+                        if matched:
+                            named_groups = {"${nick}": block_data.get("sender")}
+                            new_response = response
+                            for group_name in group_finder.findall(trigger):
+                                named_groups["${" + group_name + "}"] = matched.group(group_name)
+                            for group, value in named_groups.items():
+                                new_response = new_response.replace(group, value)
+                            self.send_action(new_response)
+                            self.times[block_data.get("sender", "")] = time.time()
 
 
         return block_data  # Yes.
