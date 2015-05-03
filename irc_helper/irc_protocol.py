@@ -44,7 +44,10 @@ class IRCBot(object):
         self.socket.send("JOIN {}\r\n".format(channel).encode())
 
     def get_block(self):
-        return self.socket.recv(4096).decode()
+        message = ""
+        while not ("\n" in message and "\r" in message):
+            message +=  self.socket.recv(1).decode()
+        return message
 
     def send_message(self, message, send_to=None):
         if send_to is None:
@@ -94,8 +97,7 @@ class IRCBot(object):
             if self.started and self.channel is None:
                 self.join_channel(self.base_channel)
             msg = self.get_block()
-            for line in msg.splitlines():
-                self.handle_block(line)
+            self.handle_block(msg)
 
     def quit(self, message):
         pass

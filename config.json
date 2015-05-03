@@ -1,6 +1,6 @@
 {
     "connection": {
-        "channel": "#httyd",
+        "channel": "#bot-test",
         "user": "JumperOfClouds",
         "nick": "Cloudjumper",
         "server": {
@@ -8,7 +8,7 @@
             "port": 6667
         }
     },
-    "inedible_victims": ["CloudJumper"],
+    "inedible_victims": ["Cloudjumper"],
     "database_name": "irc_database.db",
     "messages": {
         "announce_arrival": "enters the arena!",
@@ -59,7 +59,7 @@
         "spit_superfluous": "hasn't eaten {victim} yet!",
         "stomach": "is digesting {victims}...",
         "stomach_empty": "isn't digesting anyone...",
-        "urltitle": "\"\u0002{title}\u000F\"",
+        "urltitle": "finds the url title to be: \"\u0002{title}\"",
         "vomit": "empties his stomach!",
         "vomit_superfluous": "hasn't eaten anything yet!",
         "flag_added": "successfully added {flag} to {user}, new flags: {flags}",
