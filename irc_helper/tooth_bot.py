@@ -39,6 +39,7 @@ class ToothlessError(irc_helper.IRCError):
 
 # noinspection PyUnusedLocal
 class Toothless(irc_helper.IRCHelper):
+
     def __init__(self, config_file, close_afterwards=True):
 
         needed = ("user", "nick", "channel", "host", "port", "database_name")

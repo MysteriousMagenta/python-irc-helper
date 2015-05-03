@@ -69,7 +69,7 @@ class IRCHelper(IRCBot):
                 if block_data.get("recipient") == self.channel:
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
-                        matched = re.match(trigger, block_data.get("message", ""))
+                        matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""))
                         if matched:
                             named_groups = {"${nick}": block_data.get("sender")}
                             new_response = response
