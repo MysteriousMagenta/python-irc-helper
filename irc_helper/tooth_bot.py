@@ -40,11 +40,12 @@ class ToothlessError(irc_helper.IRCError):
 # noinspection PyUnusedLocal
 class Toothless(irc_helper.IRCHelper):
 
-    def __init__(self, config_file, close_afterwards=True):
+    def __init__(self, config_file):
 
         needed = ("user", "nick", "channel", "host", "port", "database_name", "response_delay")
         self.stomach = set()
-        self.config = json.loads(config_file.read())
+        self.config_file = config_file
+        self.config = json.loads(self.config_file.read())
         self.messages = self.config.get("messages", {})
         self.connection = self.config.get("connection", {})
         if "user" not in self.connection and "user_name" in self.connection:
@@ -63,8 +64,8 @@ class Toothless(irc_helper.IRCHelper):
 
         self.apply_commands()
         self.add_flag("MysteriousMagenta", "a")
-        if close_afterwards:
-            config_file.close()
+
+
 
     def handle_block(self, block):
         block_data = super().handle_block(block)
@@ -337,3 +338,18 @@ class Toothless(irc_helper.IRCHelper):
                         (user=user, flag=flag, flags=flags),
                         sender
                     )
+
+        @self.advanced_command(True)
+        def reload_config(bot: Toothless, message: str, sender: str):
+            if bot.has_flag("admin", sender) and message.split(" ")[0].lower() == "reload_config":
+                if not bot.config_file.closed:
+                    bot.config_file = open(bot.config_file.name, bot.config_file.mode)
+                    bot.config = json.loads(bot.config_file.read())
+                    bot.messages = bot.config.get("messages", {})
+                    bot.send_action(bot.messages.get("config_reloaded", "successfully reloaded his config!"), sender)
+                else:
+                    bot.send_action(bot.messages.get("config_closed", "can't access his config!"), sender)
+            elif not bot.has_flag("admin", sender):
+                bot.send_action(bot.messages.get("deny_command", "won't listen to you!"), message)
+
+

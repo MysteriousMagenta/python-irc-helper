@@ -72,7 +72,6 @@ class IRCHelper(IRCBot):
                 else:
                     raise IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
                 if block_data.get("recipient") == self.channel:
-                    print(self.since_last_comment(block_data.get("sender")))
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
                         if self.since_last_comment(block_data.get("sender")) < self.response_delay:
