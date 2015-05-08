@@ -4,7 +4,10 @@ Small file that handles IRC Handling.
 Currently doesn't comply with RFC section 2.3.1, but it'll get there.
 I just have to find out the freaking format :/
 """
+import ssl
 import socket
+import time
+
 
 
 class IRCError(Exception):
@@ -12,7 +15,7 @@ class IRCError(Exception):
 
 
 class IRCBot(object):
-    def __init__(self, user, nick, channel, host, port=6667):
+    def __init__(self, user, nick, channel, host, port=6667, check_login=True, fail_after=10, use_ssl=False):
         self.connection_data = (host, port)
         self.user = user
         self.nick = nick
@@ -20,7 +23,13 @@ class IRCBot(object):
         self.channel = None
         self.started = False
         self.log = print
+        self.logged_in = False
+        self.check_login = check_login
+        self.fail_time = None
+        self.fail_after = fail_after
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if use_ssl:
+            self.socket = ssl.wrap_socket(self.socket)
         self.socket.connect(self.connection_data)
         self.start_up()
 
@@ -29,8 +38,6 @@ class IRCBot(object):
             block = self.get_block()
             if self.handle_ping(block):
                 continue
-            elif "nickname is already in use" in block.lower():
-                raise IRCError("Nickname '{}' is already in use!".format(self.nick))
             elif "found your hostname" in block.lower():
                 self.socket.send("USER {0} 0 * :{0}\r\n".format(self.user).encode())
                 self.socket.send("NICK {}\r\n".format(self.nick).encode())
@@ -80,12 +87,22 @@ class IRCBot(object):
         # Are there any other commands I need to handle?
         if command.upper() in ("PRIVMSG", "ALERT"):
             self.log("[{} to {}] {}".format(sender, recipient, message))
+        if sender.lower() == "nickserv":
+            clear_message = "".join(i for i in message if i.isalnum() or i.isspace()).lower()
+            if clear_message == "your nick isnt registered":
+                raise IRCError("Can't login on a non-registered username!")
+            elif clear_message == "syntax register password email":
+                raise IRCError("Network requires both password and email!")
+            elif "this nickname is registered" in clear_message and self.check_login and not self.logged_in:
+                self.log("[Registered Nickname! ]")
+                self.fail_time = time.time()
+
         return {"command": command, "sender": sender, "recipient": recipient, "message": message}
 
     def handle_ping(self, message):
         is_ping = message.upper().startswith("PING")
         if is_ping:
-            self.log("[+] Received Ping!")
+            self.log("[Ping!]")
             data = "".join(message.split(" ", 1)[1:])[1:]
             self.socket.send("PONG :{}\r\n".format(data).encode())
         return is_ping
@@ -98,8 +115,41 @@ class IRCBot(object):
         while self.started:
             if self.started and self.channel is None:
                 self.join_channel(self.base_channel)
+            if self.check_login and self.fail_time is not None and time.time() - self.fail_time >= self.fail_after:
+                raise IRCError("Need to login on a registered username!")
             msg = self.get_block()
             self.handle_block(msg)
+
+    def register(self, password, email=None, login=False):
+        if not self.logged_in:
+            self.fail_time = None
+            send = "REGISTER " + password
+            if email is not None:
+                send += " " + email
+            self.send_message(send, "nickserv")
+            if login:
+                self.login(password)
+
+
+    def login(self, password):
+        if not self.logged_in:
+            send = "IDENTIFY " + password
+            self.send_message(send, "nickserv")
+            self.logged_in = True
+            self.fail_time = None
+
+
+    def add_host(self, host):
+        if self.logged_in:
+            self.send_message("ACCESS ADD {}".format(host), "nickserv")
+
+    def remove_host(self, host):
+        if self.logged_in:
+            self.send_message("ACCESS DEL {}".format(host), "nickserv")
+
+    def list_hosts(self):
+        self.send_message("ACCESS LIST", "nickserv")
+        return self.get_block()
 
     def quit(self, message):
         self.leave_channel(message)
