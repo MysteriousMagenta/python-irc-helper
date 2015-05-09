@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 Small file that handles IRC Handling.
 Currently doesn't comply with RFC section 2.3.1, but it'll get there.
