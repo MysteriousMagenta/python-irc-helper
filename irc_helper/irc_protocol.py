@@ -118,7 +118,9 @@ class IRCBot(object):
             if self.check_login and self.fail_time is not None and time.time() - self.fail_time >= self.fail_after:
                 raise IRCError("Need to login on a registered username!")
             msg = self.get_block()
-            self.handle_block(msg)
+            msg_data = self.handle_block(msg)
+            if msg_data:
+                self.extra_handling(msg_data)
 
     def register(self, password, email=None, login=False):
         if not self.logged_in:
@@ -150,6 +152,15 @@ class IRCBot(object):
     def list_hosts(self):
         self.send_message("ACCESS LIST", "nickserv")
         return self.get_block()
+
+    def extra_handling(self, block_data):
+        """
+        Designed to be used in subclasses, to add any extra handlers without modifying handle_block.
+        Of course you can still just modify handle_block :-)
+        Arguments:
+            block_data: The output of self.handle_block
+        """
+        return block_data
 
     def quit(self, message):
         self.leave_channel(message)

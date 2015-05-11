@@ -17,7 +17,9 @@ setup(
     name="irc_helper",
     version=1.0,
     description="A module that helps with IRC, namely IRC Bots.",
+    url="https://github.com/SquishyStrawberry/",
     author="SquishyStrawberry",
+    author_email="squishystrawberry2015@gmail.com",
     install_requires=reqs,
     packages=packs
 )

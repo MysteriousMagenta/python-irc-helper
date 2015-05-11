@@ -61,8 +61,7 @@ class IRCHelper(IRCBot):
         t = time.time() - self.times.get(user, 0)
         return 0 if t < 0 else t
 
-    def handle_block(self, block):
-        block_data = super().handle_block(block)
+    def extra_handling(self, block_data):
         if block_data.get("sender") != self.nick:
             if block_data.get("command", "").upper() == "PRIVMSG" and block_data.get("message"):
                 if block_data.get("recipient").lower() == self.channel.lower():
@@ -96,8 +95,7 @@ class IRCHelper(IRCBot):
                             self.send_action(new_response)
                             self.times[block_data.get("sender", "")] = time.time()
 
-
-        return block_data  # Yes.
+        return block_data  # Recommended!
 
     def quit(self, message):
         self.started = False
