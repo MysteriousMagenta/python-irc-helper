@@ -35,6 +35,7 @@ class IRCBot(object):
         if use_ssl:
             self.socket = ssl.wrap_socket(self.socket)
         self.socket.connect(self.connection_data)
+        self.set_level(logging.INFO)
         self.start_up()
 
     def start_up(self):
@@ -184,5 +185,5 @@ class IRCBot(object):
 
     def set_level(self, lvl=logging.DEBUG):
         logging.basicConfig(format="%(levelname)s@%(asctime)s:%(message)s", datefmt="%H:%M:%S")
-        logger.setLevel(lvl)
+        logging.getLogger(__name__).setLevel(lvl)
         logging.getLogger("requests").setLevel(logging.ERROR)

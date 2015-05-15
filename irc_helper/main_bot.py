@@ -9,8 +9,8 @@ import irc_helper
 
 group_finder = re.compile("\(\?P<(.*?)>")
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+helper_logger = logging.getLogger(__name__)
+helper_logger.setLevel(logging.INFO)
 
 class IRCHelper(irc_helper.IRCBot):
     def __init__(self, database_name, response_delay=None, *args, **kwargs):
@@ -18,6 +18,7 @@ class IRCHelper(irc_helper.IRCBot):
         self.channel_commands = set()
         self.private_commands = set()
         self.times = dict()
+
         self.response_delay = 3 if response_delay is None else response_delay
         self.command_database = sqlite3.connect(database_name)
         self.irc_cursor = self.command_database.cursor()
@@ -27,18 +28,19 @@ class IRCHelper(irc_helper.IRCBot):
             self.irc_cursor.execute("CREATE TABLE Commands (id INTEGER PRIMARY KEY, trigger TEXT, response TEXT)")
         if "Flags" not in tables:
             self.irc_cursor.execute("CREATE TABLE Flags (id INTEGER PRIMARY KEY, username TEXT, flags TEXT)")
+        self.set_level(logging.INFO)
 
     # To add a command.
     # For commands that are functions.
     def advanced_command(self, private_message=False):
-        logger.debug("[Added Advanced Command]")
+        helper_logger.debug("[Added Advanced Command]")
         return self.channel_commands.add if not private_message else self.private_commands.add
 
     # Use this if your function returns (trigger, command)
     def basic_command(self, *args, **kwargs):
 
         def basic_decorator(command):
-            logger.debug("[Added Basic Command]")
+            helper_logger.debug("[Added Basic Command]")
             trigger, response = command(*args, **kwargs)
             self.irc_cursor.execute("SELECT * FROM Commands")
             if self.irc_cursor.fetchone() is None:
@@ -54,7 +56,7 @@ class IRCHelper(irc_helper.IRCBot):
         return basic_decorator
 
     def forget_basic_command(self, trigger):
-        logger.debug("[Forgot Basic Command]")
+        helper_logger.debug("[Forgot Basic Command]")
         self.irc_cursor.execute("DELETE FROM Commands WHERE trigger=?", (trigger,))
 
     def since_last_comment(self, user):
@@ -86,7 +88,7 @@ class IRCHelper(irc_helper.IRCBot):
                             break
                         matched = re.search(trigger.replace("${nick}", self.nick), block_data.get("message", ""), re.IGNORECASE)
                         if matched:
-                            logger.debug("[Matched Trigger '{}']".format(trigger))
+                            helper_logger.debug("[Matched Trigger '{}']".format(trigger))
                             named_groups = {"${nick}": block_data.get("sender")}
                             new_response = response
                             for group_name in group_finder.findall(trigger):
@@ -105,4 +107,4 @@ class IRCHelper(irc_helper.IRCBot):
 
     def set_level(self, lvl=logging.DEBUG):
         super().set_level(lvl)
-        logger.setLevel(lvl)
+        logging.getLogger(__name__).setLevel(lvl)
