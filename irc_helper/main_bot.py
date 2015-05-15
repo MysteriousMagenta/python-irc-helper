@@ -10,7 +10,7 @@ import irc_helper
 group_finder = re.compile("\(\?P<(.*?)>")
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.INFO)
 
 class IRCHelper(irc_helper.IRCBot):
     def __init__(self, database_name, response_delay=None, *args, **kwargs):
