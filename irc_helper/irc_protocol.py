@@ -182,7 +182,7 @@ class IRCBot(object):
         self.started = False
         self.socket.close()
 
-    def set_debug(self):
+    def set_level(self, lvl=logging.DEBUG):
         logging.basicConfig(format="%(levelname)s@%(asctime)s:%(message)s", datefmt="%H:%M:%S")
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(lvl)
         logging.getLogger("requests").setLevel(logging.ERROR)
