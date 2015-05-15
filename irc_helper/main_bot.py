@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
 # Since Imports are based on sys.path, we need to add the parent directory.
-import os
+import logging
 import re
 import sqlite3
-import sys
 import time
+import irc_helper
 
-
-parent_directory = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-2])
-if parent_directory not in sys.path:
-    sys.path.insert(0, parent_directory)
-
-from irc_helper import IRCBot, IRCError
 
 group_finder = re.compile("\(\?P<(.*?)>")
 
+logger = logging.getLogger(__name__)
 
-class IRCHelper(IRCBot):
+
+class IRCHelper(irc_helper.IRCBot):
     def __init__(self, database_name, response_delay=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.channel_commands = set()
@@ -35,11 +31,14 @@ class IRCHelper(IRCBot):
     # To add a command.
     # For commands that are functions.
     def advanced_command(self, private_message=False):
+        logger.debug("[Added Advanced Command]")
         return self.channel_commands.add if not private_message else self.private_commands.add
 
     # Use this if your function returns (trigger, command)
     def basic_command(self, *args, **kwargs):
+
         def basic_decorator(command):
+            logger.debug("[Added Basic Command]")
             trigger, response = command(*args, **kwargs)
             self.irc_cursor.execute("SELECT * FROM Commands")
             if self.irc_cursor.fetchone() is None:
@@ -55,6 +54,7 @@ class IRCHelper(IRCBot):
         return basic_decorator
 
     def forget_basic_command(self, trigger):
+        logger.debug("[Forgot Basic Command]")
         self.irc_cursor.execute("DELETE FROM Commands WHERE trigger=?", (trigger,))
 
     def since_last_comment(self, user):
@@ -69,7 +69,7 @@ class IRCHelper(IRCBot):
                 elif block_data.get("recipient").lower() == self.nick.lower():
                     command_list = self.private_commands
                 else:
-                    raise IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
+                    raise irc_helper.IRCError("Couldn't find commands to use! Recipient was '{}'".format(block_data.get("recipient")))
 
 
                 for func_command in command_list:
@@ -84,8 +84,9 @@ class IRCHelper(IRCBot):
                     for trigger, response in self.irc_cursor.fetchall():
                         if self.since_last_comment(block_data.get("sender")) < self.response_delay:
                             break
-                        matched = re.search(trigger.format(nick=self.nick), block_data.get("message", ""), re.IGNORECASE)
+                        matched = re.search(trigger.replace("${nick}", self.nick), block_data.get("message", ""), re.IGNORECASE)
                         if matched:
+                            logger.debug("[Matched Trigger '{}']".format(trigger))
                             named_groups = {"${nick}": block_data.get("sender")}
                             new_response = response
                             for group_name in group_finder.findall(trigger):
@@ -98,8 +99,10 @@ class IRCHelper(IRCBot):
         return block_data  # Recommended!
 
     def quit(self, message):
-        self.started = False
-        self.leave_channel(message)
+        super().quit(message)
         self.command_database.commit()
         self.command_database.close()
-        self.socket.close()
+
+    def set_debug(self):
+        super().set_debug()
+        logger.setLevel(logging.DEBUG)

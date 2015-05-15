@@ -7,6 +7,9 @@ I just have to find out the freaking format :/
 import ssl
 import socket
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -34,11 +37,13 @@ class IRCBot(object):
         self.start_up()
 
     def start_up(self):
+        logger.debug("[Starting...]")
         while True:
             block = self.get_block()
             if self.handle_ping(block):
                 continue
             elif "found your hostname" in block.lower():
+                logger.debug("[Set USER and NICK]")
                 self.socket.send("USER {0} 0 * :{0}\r\n".format(self.user).encode())
                 self.socket.send("NICK {}\r\n".format(self.nick).encode())
             elif "end of /motd" in block.lower():
@@ -46,6 +51,7 @@ class IRCBot(object):
                 return
 
     def join_channel(self, channel):
+        logger.debug("[Joined Channel {}]".format(channel))
         self.channel = channel
         self.socket.send("JOIN {}\r\n".format(channel).encode())
 
@@ -60,7 +66,7 @@ class IRCBot(object):
             if self.channel is None:
                 raise IRCError("Tried calling send_message without being in a channel and with no recipient!")
             send_to = self.channel
-        self.log("[{} {} {}] {}".format(self.nick, "on" if send_to == self.channel else "to", send_to, message))
+        logger.info("[{} {} {}] {}".format(self.nick, "on" if send_to == self.channel else "to", send_to, message))
         self.socket.send("PRIVMSG {} :{}\r\n".format(send_to, message).encode())
 
     def send_action(self, message, send_to=None):
@@ -86,7 +92,7 @@ class IRCBot(object):
 
         # Are there any other commands I need to handle?
         if command.upper() in ("PRIVMSG", "ALERT"):
-            self.log("[{} to {}] {}".format(sender, recipient, message))
+            logger.info("[{} {} {}] {}".format(sender, "on" if recipient == self.channel else "to", recipient, message))
         if sender.lower() == "nickserv":
             clear_message = "".join(i for i in message if i.isalnum() or i.isspace()).lower()
             if clear_message == "your nick isnt registered":
@@ -94,7 +100,7 @@ class IRCBot(object):
             elif clear_message == "syntax register password email":
                 raise IRCError("Network requires both password and email!")
             elif "this nickname is registered" in clear_message and self.check_login and not self.logged_in:
-                self.log("[Registered Nickname! ]")
+                logger.debug("[Registered Nickname]")
                 self.fail_time = time.time()
 
         return {"command": command, "sender": sender, "recipient": recipient, "message": message}
@@ -102,16 +108,18 @@ class IRCBot(object):
     def handle_ping(self, message):
         is_ping = message.upper().startswith("PING")
         if is_ping:
-            self.log("[Ping!]")
+            logger.debug("[Responded To Ping]")
             data = "".join(message.split(" ", 1)[1:])[1:]
             self.socket.send("PONG :{}\r\n".format(data).encode())
         return is_ping
 
     def leave_channel(self, message=None):
+        logger.debug("[Left Channel {} with reason '{}']".format(self.channel, message))
         quit_message = (" :" + message) if message is not None else None
         self.socket.send("PART {}{}\r\n".format(self.channel, quit_message or "").encode())
 
     def run(self):
+        logger.debug("[Started Running]")
         while self.started:
             if self.started and self.channel is None:
                 self.join_channel(self.base_channel)
@@ -123,6 +131,7 @@ class IRCBot(object):
                 self.extra_handling(msg_data)
 
     def register(self, password, email=None, login=False):
+        logger.debug("[Registered]")
         if not self.logged_in:
             self.fail_time = None
             send = "REGISTER " + password
@@ -134,6 +143,7 @@ class IRCBot(object):
 
 
     def login(self, password):
+        logger.debug("[Logged In]")
         if not self.logged_in:
             send = "IDENTIFY " + password
             self.send_message(send, "nickserv")
@@ -142,14 +152,17 @@ class IRCBot(object):
 
 
     def add_host(self, host):
+        logger.debug("[Added Host {}]".format(host))
         if self.logged_in:
             self.send_message("ACCESS ADD {}".format(host), "nickserv")
 
     def remove_host(self, host):
+        logger.debug("[Removed Host {}]".format(host))
         if self.logged_in:
             self.send_message("ACCESS DEL {}".format(host), "nickserv")
 
     def list_hosts(self):
+        logger.debug("[Listed Hosts]")
         self.send_message("ACCESS LIST", "nickserv")
         return self.get_block()
 
@@ -163,6 +176,12 @@ class IRCBot(object):
         return block_data
 
     def quit(self, message):
+        logger.debug("[Quit]")
         self.leave_channel(message)
         self.started = False
         self.socket.close()
+
+    def set_debug(self):
+        logging.basicConfig(format="%(levelname)s@%(asctime)s:%(message)s", datefmt="%H:%M:%S")
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger("requests").setLevel(logging.ERROR)
