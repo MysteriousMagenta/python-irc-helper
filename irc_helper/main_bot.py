@@ -103,7 +103,6 @@ class IRCHelper(irc_helper.IRCBot):
     def quit(self, message):
         super().quit(message)
         self.command_database.commit()
-        self.command_database.close()
 
     def set_level(self, lvl=logging.DEBUG):
         super().set_level(lvl)
