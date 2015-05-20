@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Since Imports are based on sys.path, we need to add the parent directory.
 import logging
 import re
+import os
 import sqlite3
 import time
 import irc_helper
@@ -13,7 +13,7 @@ helper_logger = logging.getLogger(__name__)
 helper_logger.setLevel(logging.INFO)
 
 class IRCHelper(irc_helper.IRCBot):
-    def __init__(self, database_name, response_delay=None, *args, **kwargs):
+    def __init__(self, database_name, response_delay=None, print_commands=False,  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.channel_commands = set()
         self.private_commands = set()
@@ -29,6 +29,7 @@ class IRCHelper(irc_helper.IRCBot):
         if "Flags" not in tables:
             self.irc_cursor.execute("CREATE TABLE Flags (id INTEGER PRIMARY KEY, username TEXT, flags TEXT)")
         self.set_level(logging.INFO)
+        self.print_commands = print_commands
 
     # To add a command.
     # For commands that are functions.
@@ -74,11 +75,16 @@ class IRCHelper(irc_helper.IRCBot):
 
 
                 for func_command in command_list:
+
                     if self.since_last_comment(block_data.get("sender")) < self.response_delay:
                         break
                     if func_command(self, block_data.get("message"), block_data.get("sender")):
+                        if self.print_commands:
+                            helper_logger.debug("['{}' Matches]".format(func_command.__name__))
                         self.times[block_data.get("sender", "")] = time.time()
                         break
+                    if self.print_commands:
+                        helper_logger.debug("['{}' Doesn't Match]".format(func_command.__name__))
 
                 if block_data.get("recipient") == self.channel:
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
