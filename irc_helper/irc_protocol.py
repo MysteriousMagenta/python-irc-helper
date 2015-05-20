@@ -61,7 +61,11 @@ class IRCBot(object):
         message = b""
         while not (b"\n" in message and b"\r" in message):
             message += self.socket.recv(1)
-        return message.decode()
+        try:
+            return message.decode()
+        except (UnicodeError):
+            logging.warning("Could not decode message {!r}".format(message))
+            return message.decode("utf-8", "ignore")
 
     def send_message(self, message, send_to=None):
         if send_to is None:

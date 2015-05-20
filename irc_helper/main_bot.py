@@ -33,7 +33,6 @@ class IRCHelper(irc_helper.IRCBot):
     # To add a command.
     # For commands that are functions.
     def advanced_command(self, private_message=False):
-        helper_logger.debug("[Added Advanced Command]")
         return self.channel_commands.add if not private_message else self.private_commands.add
 
     # Use this if your function returns (trigger, command)
