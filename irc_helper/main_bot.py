@@ -56,7 +56,6 @@ class IRCHelper(irc_helper.IRCBot):
         return basic_decorator
 
     def forget_basic_command(self, trigger):
-        helper_logger.debug("[Forgot Basic Command]")
         self.irc_cursor.execute("DELETE FROM Commands WHERE trigger=?", (trigger,))
 
     def since_last_comment(self, user):
@@ -91,7 +90,7 @@ class IRCHelper(irc_helper.IRCBot):
                     for trigger, response in self.irc_cursor.fetchall():
                         if self.since_last_comment(block_data.get("sender")) < self.response_delay:
                             break
-                        matched = re.search(trigger.replace("${nick}", self.nick), block_data.get("message", ""), re.IGNORECASE)
+                        matched = re.search(trigger.replace("${nick}", self.nick), block_data.get("message", ""))
                         if matched:
                             helper_logger.debug("[Matched Trigger '{}']".format(trigger))
                             named_groups = {"${nick}": block_data.get("sender")}
