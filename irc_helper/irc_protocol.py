@@ -101,9 +101,7 @@ class IRCBot(object):
             logger.info("[{} {} {}] {}".format(sender, "on" if recipient == self.channel else "to", recipient, message))
         if sender.lower() == "nickserv":
             clear_message = "".join(i for i in message if i.isalnum() or i.isspace()).lower()
-            if clear_message == "your nick isnt registered":
-                raise IRCError("Can't login on a non-registered username!")
-            elif clear_message == "syntax register password email":
+            if clear_message == "syntax register password email":
                 raise IRCError("Network requires both password and email!")
             elif "this nickname is registered" in clear_message and self.check_login and not self.logged_in:
                 logger.debug("[Registered Nickname]")
