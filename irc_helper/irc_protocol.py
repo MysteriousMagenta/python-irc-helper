@@ -7,6 +7,7 @@ I just have to find out the freaking format :/
 import ssl
 import socket
 import time
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,9 @@ class IRCError(Exception):
 
 
 class IRCBot(object):
+    # Taken from https://stackoverflow.com/questions/970545/how-to-strip-color-codes-used-by-mirc-users
+    color_finder = re.compile("\x03(?:\d{1,2}(?:,\d{1,2})?)?|\x0f", re.UNICODE)
+
     def __init__(self, user, nick, channel, host, port=6667, check_login=True, fail_after=10, use_ssl=False):
         self.connection_data = (host, port)
         self.user = user
@@ -57,15 +61,19 @@ class IRCBot(object):
         self.channel = channel
         self.socket.send("JOIN {}\r\n".format(channel).encode())
 
-    def get_block(self):
+    def get_block(self, strip_colors=True):
         message = b""
         while not (b"\n" in message and b"\r" in message):
             message += self.socket.recv(1)
         try:
-            return message.decode()
-        except (UnicodeError):
+            message = message.decode()
+        except UnicodeError:
             logging.warning("Could not decode message {!r}".format(message))
-            return message.decode("utf-8", "ignore")
+            message = message.decode("utf-8", "ignore")
+        if strip_colors:
+            return IRCBot.color_finder.sub("", message)
+        else:
+            return message
 
     def send_message(self, message, send_to=None):
         if send_to is None:
