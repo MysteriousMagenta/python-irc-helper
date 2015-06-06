@@ -15,7 +15,7 @@ if not packs:
 
 setup(
     name="irc_helper",
-    version=1.4,
+    version="1.4.1",
     description="A module that helps with IRC, namely IRC Bots.",
     url="https://github.com/SquishyStrawberry/",
     author="SquishyStrawberry",

@@ -21,7 +21,7 @@ class IRCError(Exception):
 
 class IRCBot(object):
     # Taken from https://stackoverflow.com/questions/970545/how-to-strip-color-codes-used-by-mirc-users
-    color_finder = re.compile("\x03(?:\d{1,2}(?:,\d{1,2})?)?|\x0f", re.UNICODE)
+    color_finder = re.compile("\x1f|\x02|\x12|\x0f|\x16|\x03(?:\d{1,2}(?:,\d{1,2})?)?", re.UNICODE)
 
     def __init__(self, user, nick, channel, host, port=6667, check_login=True, fail_after=10, use_ssl=False):
         self.connection_data = (host, port)
