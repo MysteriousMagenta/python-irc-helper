@@ -85,7 +85,7 @@ class IRCHelper(irc_helper.IRCBot):
                     if self.print_commands:
                         helper_logger.debug("['{}' Doesn't Match]".format(func_command.__name__))
 
-                if block_data.get("recipient") == self.channel:
+                if block_data.get("recipient").lower() == self.channel.lower():
                     self.irc_cursor.execute("SELECT trigger,response FROM Commands")
                     for trigger, response in self.irc_cursor.fetchall():
                         if self.since_last_comment(block_data.get("sender")) < self.response_delay:
