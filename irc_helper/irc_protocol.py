@@ -48,7 +48,7 @@ class IRCBot(object):
             block = self.get_block()
             if self.handle_ping(block):
                 continue
-            elif "found your hostname" in block.lower():
+            elif "hostname" in block.lower():
                 logger.debug("[Set USER and NICK]")
                 self.socket.send("USER {0} 0 * :{0}\r\n".format(self.user).encode())
                 self.socket.send("NICK {}\r\n".format(self.nick).encode())
